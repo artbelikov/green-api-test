@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useSessionStore } from '@/entities/session'
 import { ConnectPage } from '@/pages/connect'
-import { PlaceholderPage } from '@/pages/placeholder'
+import { MessengerPage } from '@/pages/messenger'
 import { AppProvider } from './providers/app-provider'
 import { bindChatStores } from './providers/chat-stores'
 import { bindNotificationEngineToSession } from './providers/notification-engine'
@@ -17,7 +17,7 @@ function App() {
   useEffect(() => bindChatStores(), [])
 
   return (
-    <AppProvider>{status === 'disconnected' ? <ConnectPage /> : <PlaceholderPage />}</AppProvider>
+    <AppProvider>{status === 'disconnected' ? <ConnectPage /> : <MessengerPage />}</AppProvider>
   )
 }
 

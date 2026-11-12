@@ -91,6 +91,50 @@ describe('mock gateway handlers', () => {
     expect(unknown).toEqual({ chatId: '70000000000@c.us' })
   })
 
+  it('serves the chat list, registering chats contacted via getContactInfo or sendMessage', async () => {
+    mockGateway.autoReplyEnabled = false
+    const empty = await (await fetch(`${BASE}/getChats/${TOKEN}`)).json()
+    expect(empty).toEqual([])
+
+    await fetch(`${BASE}/getContactInfo/${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: '79991234567@c.us' }),
+    })
+    await fetch(`${BASE}/sendMessage/${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: '79160000000', message: 'hi' }),
+    })
+
+    const chats = (await (await fetch(`${BASE}/getChats/${TOKEN}`)).json()) as Array<
+      Record<string, string>
+    >
+    expect(chats).toHaveLength(2)
+    expect(chats[0]).toMatchObject({ chatId: '79991234567', name: 'Demo Contact', type: 'user' })
+    expect(chats[1]).toMatchObject({ chatId: '79160000000', name: '79160000000' })
+
+    const unauthorizedResponse = await fetch(`${BASE}/getChats/invalid-token`)
+    expect(unauthorizedResponse.status).toBe(401)
+  })
+
+  it('answers getAvatar without a photo so clients fall back to initials', async () => {
+    const avatar = await (
+      await fetch(`${BASE}/getAvatar/${TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: '79991234567' }),
+      })
+    ).json()
+    expect(avatar).toEqual({ urlAvatar: '', available: false })
+
+    const unauthorizedResponse = await fetch(`${BASE}/getAvatar/invalid-token`, {
+      method: 'POST',
+      body: JSON.stringify({ chatId: '79991234567' }),
+    })
+    expect(unauthorizedResponse.status).toBe(401)
+  })
+
   it('resets settings state back to the defaults', async () => {
     await fetch(`${BASE}/setSettings/${TOKEN}`, {
       method: 'POST',

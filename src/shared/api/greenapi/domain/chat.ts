@@ -61,7 +61,8 @@ export interface ContactInfoFallback {
 }
 
 export function mapContactInfo(raw: GreenApiContactInfo, fallback: ContactInfoFallback = {}): Chat {
-  const id = raw.chatId ?? fallback.chatId ?? ''
+  const resolved = raw.chatId
+  const id = resolved !== undefined && resolved.length > 0 ? resolved : (fallback.chatId ?? '')
   return {
     id,
     name: resolveName(raw.name, raw.contactName, fallback.name, id),

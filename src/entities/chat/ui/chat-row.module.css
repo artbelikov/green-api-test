@@ -1,0 +1,88 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.row:hover {
+  background-color: var(--mantine-color-gray-1);
+}
+
+.row[data-active] {
+  background-color: var(--mantine-color-brand-0);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.top,
+.bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--mantine-color-text);
+  min-width: 0;
+}
+
+.row[data-unread] .name {
+  font-weight: 700;
+}
+
+.meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--mantine-color-dimmed);
+  flex-shrink: 0;
+}
+
+.tick {
+  font-size: 12px;
+  color: var(--mantine-color-dimmed);
+}
+
+.tick[data-read] {
+  color: var(--mantine-color-brand-5);
+}
+
+.tick[data-failed] {
+  color: var(--mantine-color-red-6);
+}
+
+.preview {
+  font-size: 14px;
+  color: var(--mantine-color-dimmed);
+  min-width: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background-color: var(--mantine-color-brand-5);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}

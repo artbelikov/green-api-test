@@ -29,6 +29,14 @@ export interface MockMessage {
   readonly timestamp: number
 }
 
+export interface MockChat {
+  readonly chatId: string
+  readonly name: string
+  readonly type: string
+  readonly username?: string
+  readonly phoneNumber?: string
+}
+
 const AUTO_REPLY_TEXT = 'Mock reply — just checking the flow works.'
 const AUTO_REPLY_DELAY_MS = 1_200
 const RECEIVE_POLL_TICK_MS = 150
@@ -67,6 +75,7 @@ export const mockGateway = {
   settings: { ...DEFAULT_SETTINGS },
   receipts: [] as QueuedReceipt[],
   messages: [] as MockMessage[],
+  chats: [] as MockChat[],
   autoReplyEnabled: true,
   deliverNotification(envelope: GreenApiNotificationEnvelope): number {
     const receiptId = mockGateway.nextReceiptId
@@ -80,10 +89,17 @@ export const mockGateway = {
     mockGateway.settings = { ...DEFAULT_SETTINGS }
     mockGateway.receipts = []
     mockGateway.messages = []
+    mockGateway.chats = []
     mockGateway.autoReplyEnabled = true
     mockGateway.nextReceiptId = 1
     mockGateway.nextMessageId = 1
   },
+}
+
+const ensureChat = (chatId: string, name: string): void => {
+  if (!mockGateway.chats.some((chat) => chat.chatId === chatId)) {
+    mockGateway.chats.push({ chatId, name, type: 'user' })
+  }
 }
 
 const endpoint = (method: string): RegExp =>
@@ -124,6 +140,7 @@ export const handlers: HttpHandler[] = [
     const body = (await request.json()) as { chatId?: string }
     const chatId = typeof body.chatId === 'string' ? body.chatId : ''
     if (chatId.startsWith(DEMO_CONTACT_CHAT_ID)) {
+      ensureChat(DEMO_CONTACT_CHAT_ID, 'Demo Contact')
       return HttpResponse.json({
         chatId: DEMO_CONTACT_CHAT_ID,
         name: 'Demo Contact',
@@ -133,6 +150,18 @@ export const handlers: HttpHandler[] = [
       })
     }
     return HttpResponse.json({ chatId })
+  }),
+  http.get(endpoint('getChats'), ({ request }) => {
+    if (tokenFrom(request.url) === INVALID_TOKEN) {
+      return unauthorized()
+    }
+    return HttpResponse.json(mockGateway.chats)
+  }),
+  http.post(endpoint('getAvatar'), ({ request }) => {
+    if (tokenFrom(request.url) === INVALID_TOKEN) {
+      return unauthorized()
+    }
+    return HttpResponse.json({ urlAvatar: '', available: false })
   }),
   http.post(endpoint('sendMessage'), async ({ request }) => {
     if (tokenFrom(request.url) === INVALID_TOKEN) {
@@ -144,6 +173,7 @@ export const handlers: HttpHandler[] = [
     if (chatId === null || message === null) {
       return new HttpResponse('Bad request', { status: 400 })
     }
+    ensureChat(chatId, chatId)
     const idMessage = `mock-${mockGateway.nextMessageId}`
     mockGateway.nextMessageId += 1
     const timestamp = Date.now()

@@ -49,11 +49,13 @@ describe('App', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(i18n.placeholder.title)
+      expect(screen.getByRole('heading', { name: i18n.messenger.list.heading })).toBeInTheDocument()
     })
     await waitFor(() => {
       expect(screen.getByText(i18n.session.settlingNotice)).toBeInTheDocument()
     })
-    expect(screen.getByRole('button', { name: i18n.session.disconnectAction })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: i18n.messenger.list.newChatAction }),
+    ).toBeInTheDocument()
   })
 })

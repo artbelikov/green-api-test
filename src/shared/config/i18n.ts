@@ -10,11 +10,6 @@ export const i18n = {
         'Only Russian and Kazakhstan phone numbers are supported. For other regions, enter a full chatId.',
     },
   },
-  placeholder: {
-    title: 'MAX Messenger',
-    subtitle:
-      'You are connected. The chat list and conversation arrive in the next build sessions.',
-  },
   session: {
     settlingNotice:
       'Settings are being applied on the instance — chat history may stay empty for a few minutes.',
@@ -22,6 +17,50 @@ export const i18n = {
   },
   chat: {
     sendFailedToast: 'Message was not sent. Check the connection and try again.',
+  },
+  messenger: {
+    navRail: {
+      label: 'Navigation',
+      all: 'Chats',
+      contacts: 'Contacts',
+      settings: 'Settings',
+    },
+    list: {
+      heading: 'Chats',
+      searchPlaceholder: 'Search',
+      newChatAction: 'New chat',
+      emptyTitle: 'No chats yet',
+      emptyHint: 'Create your first chat — enter the recipient phone number.',
+      youPrefix: 'You: ',
+      status: {
+        connected: 'Connected',
+        connecting: 'Connecting',
+        disconnected: 'Offline',
+      },
+    },
+    conversation: {
+      placeholder: 'Select a chat to start messaging',
+      backAction: 'Back',
+    },
+  },
+  newChat: {
+    title: 'New chat',
+    phoneLabel: 'Phone number',
+    phonePlaceholder: '79991234567',
+    chatIdLabel: 'Or full chatId (Telegram)',
+    chatIdPlaceholder: 'e.g. 79991234567 or -1001234567',
+    createAction: 'Create chat',
+    cancelAction: 'Cancel',
+    limitToast: 'Chat could not be created: the instance plan limit may be reached.',
+    errors: {
+      emptyChatId: 'Enter the full chatId',
+      notConnected: 'You are not connected to an instance.',
+      resolveFailed: 'Could not resolve this contact. Check the details and try again.',
+      statusError: 'The request failed. Check the connection and try again.',
+      networkError: 'Network error. Check your connection and try again.',
+      timeoutError: 'The request timed out. Try again.',
+      rateLimited: 'Too many requests. Wait a moment and try again.',
+    },
   },
   connect: {
     heading: 'Connect your messenger',
