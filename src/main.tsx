@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import { App } from '@/app'
 import { startMockWorker } from '@/app/mocks'
 import { i18n } from '@/shared/config'
+import '@mantine/core/styles.css'
+import '@mantine/notifications/styles.css'
 
 async function bootstrap(): Promise<void> {
   const container = document.getElementById('root')

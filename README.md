@@ -6,7 +6,7 @@ Scope kept deliberately minimal per the task: **text-only messaging** — connec
 
 > Stack: Vite 8 · React 19 · TypeScript (strict) · Mantine 9 · TanStack Query 5 · Zustand 5 · Feature Sliced Design · Biome 2 · Vitest + Testing Library + MSW (test pyramid) · deployed to Railway.com
 
-**Status: live-receive milestone (T3) merged — T1 (API client) + T2 (session/connect/bootstrap) + T3 (notification engine long-poll) on `main`; chat UI tasks T4+ in flight** (see `docs/PROGRESS.md` for the live board).
+**Status: live-sync core merged (T1–T4 on `main`) — API client, session/connect/bootstrap, notification engine long-poll, chats/messages stores with history hydrate, unread counters, and optimistic send; chat UI tasks T5+ in flight** (see `docs/PROGRESS.md` for the live board).
 
 ## Requirements
 
@@ -23,7 +23,7 @@ pnpm dev
 
 `pnpm dev` opens the **connect screen**: enter your GREEN-API `idInstance` and `apiTokenInstance` (apiUrl is editable under _Advanced settings_) and press _Connect_. The app validates the credentials via `getStateInstance`, persists the session in `localStorage` (survives reloads), and bootstraps the webhook settings (`incomingWebhook`, `outgoingMessageWebhook`, `outgoingWebhook`, `stateWebhook`) once via `SetSettings` — idempotent, `webhookUrl` stays empty. Since the instance applies settings server-side for up to ~5 minutes, a "settling in" notice is shown until then, and empty `getChatHistory` results are normal during that window. _Disconnect_ clears the stored session.
 
-Mock/demo mode (no instance required): boot with `VITE_API_MODE=mock`, or open any page with **`?mock=1`** (runtime activation for reviewers — credentials are prefilled, any values connect). A scripted MSW fake gateway answers `getStateInstance`, `getSettings`/`setSettings`, and `getContactInfo`, including 401 error paths for an `invalid-token` value.
+Mock/demo mode (no instance required): boot with `VITE_API_MODE=mock`, or open any page with **`?mock=1`** (runtime activation for reviewers — credentials are prefilled, any values connect). The scripted MSW fake gateway answers `getStateInstance`, `getSettings`/`setSettings`, `getContactInfo`, `sendMessage` (echoes a delivery webhook and schedules a scripted incoming auto-reply ~1.2 s later so the receive flow can be demoed end-to-end), `getChatHistory` (newest-first journal of the mock message log), `readChat`, and the notification receive/ack pair. Chat data (summaries and up to 200 messages per chat) persists in `localStorage` across reloads and is cleared on _Disconnect_.
 
 ## Scripts
 

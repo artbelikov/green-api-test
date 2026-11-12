@@ -20,6 +20,9 @@ export const i18n = {
       'Settings are being applied on the instance — chat history may stay empty for a few minutes.',
     disconnectAction: 'Disconnect',
   },
+  chat: {
+    sendFailedToast: 'Message was not sent. Check the connection and try again.',
+  },
   connect: {
     heading: 'Connect your messenger',
     subtitle: 'Enter your GREEN-API instance credentials to sign in.',

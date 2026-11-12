@@ -121,6 +121,7 @@ describe('mapNotification', () => {
         timestamp: 1732268220000,
         status: null,
       },
+      chatFallback: { chatId: '120363369140947676@g.us', name: 'Группа' },
     })
   })
 
@@ -142,6 +143,29 @@ describe('mapNotification', () => {
         timestamp: 1732268220000,
         status: 'sent',
       },
+      chatFallback: { chatId: '79161234567@c.us', name: 'Иван' },
+    })
+  })
+
+  it('falls back to the chatId as the unknown chat name when senderData names are absent', () => {
+    const event = mapNotification({
+      typeWebhook: 'incomingMessageReceived',
+      timestamp: 1732268220,
+      idMessage: 'MSG2',
+      senderData: { chatId: '79161234567@c.us' },
+      messageData: { typeMessage: 'textMessage', textMessageData: { textMessage: 'ping' } },
+    })
+    expect(event).toEqual({
+      kind: 'message',
+      message: {
+        id: 'MSG2',
+        chatId: '79161234567@c.us',
+        direction: 'incoming',
+        text: 'ping',
+        timestamp: 1732268220000,
+        status: null,
+      },
+      chatFallback: { chatId: '79161234567@c.us', name: '79161234567@c.us' },
     })
   })
 

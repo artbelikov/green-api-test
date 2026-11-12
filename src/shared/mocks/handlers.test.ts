@@ -161,4 +161,83 @@ describe('mock gateway handlers', () => {
     expect(receiveResponse.status).toBe(401)
     expect(deleteResponse.status).toBe(401)
   })
+
+  it('records sent messages, echoes the webhook, and serves chat history newest-first', async () => {
+    mockGateway.autoReplyEnabled = false
+    const send = (await (
+      await fetch(`${BASE}/sendMessage/${TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: '79991234567', message: 'hello' }),
+      })
+    ).json()) as { idMessage: string }
+    expect(send.idMessage).toBe('mock-1')
+
+    const history = (await (
+      await fetch(`${BASE}/getChatHistory/${TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: '79991234567' }),
+      })
+    ).json()) as Array<Record<string, unknown>>
+    expect(history).toHaveLength(1)
+    expect(history[0]).toMatchObject({
+      type: 'outgoing',
+      idMessage: 'mock-1',
+      textMessage: 'hello',
+      statusMessage: 'sent',
+    })
+
+    const read = await (
+      await fetch(`${BASE}/readChat/${TOKEN}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: '79991234567' }),
+      })
+    ).json()
+    expect(read).toEqual({ setRead: true })
+
+    expect(mockGateway.receipts).toHaveLength(1)
+    expect(mockGateway.receipts[0]?.body?.typeWebhook).toBe('outgoingMessageReceived')
+  })
+
+  it('rejects invalid tokens and malformed payloads on the chat methods', async () => {
+    const sendMessageResponse = await fetch(`${BASE}/sendMessage/invalid-token`, {
+      method: 'POST',
+      body: JSON.stringify({ chatId: 'x', message: 'y' }),
+    })
+    const historyResponse = await fetch(`${BASE}/getChatHistory/invalid-token`, {
+      method: 'POST',
+      body: JSON.stringify({ chatId: 'x' }),
+    })
+    const readResponse = await fetch(`${BASE}/readChat/invalid-token`, {
+      method: 'POST',
+      body: JSON.stringify({ chatId: 'x' }),
+    })
+    const malformed = await fetch(`${BASE}/sendMessage/${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    })
+
+    expect(sendMessageResponse.status).toBe(401)
+    expect(historyResponse.status).toBe(401)
+    expect(readResponse.status).toBe(401)
+    expect(malformed.status).toBe(400)
+  })
+
+  it('delivers a scripted auto-reply so the demo flow can receive a response', async () => {
+    await fetch(`${BASE}/sendMessage/${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: '79991234567', message: 'hello' }),
+    })
+    expect(mockGateway.receipts).toHaveLength(1)
+
+    await new Promise((resolve) => setTimeout(resolve, 1_500))
+
+    expect(mockGateway.messages).toHaveLength(2)
+    expect(mockGateway.receipts).toHaveLength(2)
+    expect(mockGateway.receipts[1]?.body?.typeWebhook).toBe('incomingMessageReceived')
+  })
 })

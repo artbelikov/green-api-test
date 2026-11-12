@@ -14,7 +14,11 @@ export interface Message {
 }
 
 export type NotificationEvent =
-  | { readonly kind: 'message'; readonly message: Message }
+  | {
+      readonly kind: 'message'
+      readonly message: Message
+      readonly chatFallback: NotificationChatFallback | null
+    }
   | {
       readonly kind: 'status'
       readonly idMessage: string
@@ -23,6 +27,10 @@ export type NotificationEvent =
       readonly timestamp: number
     }
   | { readonly kind: 'ignored' }
+
+export type MessageNotificationEvent = Extract<NotificationEvent, { readonly kind: 'message' }>
+
+export type StatusNotificationEvent = Extract<NotificationEvent, { readonly kind: 'status' }>
 
 const HISTORY_DIRECTIONS: ReadonlySet<string> = new Set(['incoming', 'outgoing'])
 
@@ -147,6 +155,7 @@ export function mapNotification(
       timestamp: timestamp * 1000,
       status: typeWebhook === 'incomingMessageReceived' ? null : 'sent',
     },
+    chatFallback: notificationChatFallback(envelope),
   }
 }
 

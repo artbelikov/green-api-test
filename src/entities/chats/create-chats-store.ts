@@ -1,0 +1,241 @@
+import { create } from 'zustand'
+import type { Chat, Message } from '@/shared/api/greenapi'
+import { type KeyValueStore, readJson, writeJson } from '@/shared/lib/storage'
+import type {
+  ChatLastMessagePreview,
+  ChatMessagePreviewInput,
+  ChatStatusUpdateInput,
+  ChatSummary,
+} from './types'
+
+const CHATS_STORAGE_KEY = 'green-api-messenger:chats:v1'
+
+export interface ChatsStoreDeps {
+  readonly now: () => number
+  readonly storage: KeyValueStore
+}
+
+export interface ChatsState {
+  readonly summaries: readonly ChatSummary[]
+  readonly activeChatId: string | null
+  upsertChats(chats: readonly Chat[]): void
+  applyNewMessage(input: ChatMessagePreviewInput): void
+  applyStatusUpdate(update: ChatStatusUpdateInput): void
+  openChat(chatId: string): void
+  closeChat(): void
+  clear(): void
+}
+
+const CHAT_TYPES: ReadonlySet<string> = new Set(['private', 'group', 'channel', 'unknown'])
+
+const STATUS_RANK: Readonly<Record<string, number>> = {
+  pending: 0,
+  sent: 1,
+  delivered: 2,
+  read: 3,
+}
+
+const rankOf = (status: string | null): number => (status === null ? 0 : (STATUS_RANK[status] ?? 0))
+
+const previewOf = (message: Message): ChatLastMessagePreview => ({
+  id: message.id,
+  text: message.text,
+  direction: message.direction,
+  status: message.status,
+  timestamp: message.timestamp,
+})
+
+const compareSummaries = (a: ChatSummary, b: ChatSummary): number =>
+  b.lastActivityAt - a.lastActivityAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+
+const sortSummaries = (summaries: readonly ChatSummary[]): ChatSummary[] =>
+  [...summaries].sort(compareSummaries)
+
+const isPreviewValue = (value: unknown): value is ChatLastMessagePreview => {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const preview = value as Record<string, unknown>
+  return (
+    typeof preview.id === 'string' &&
+    typeof preview.text === 'string' &&
+    (preview.direction === 'incoming' || preview.direction === 'outgoing') &&
+    (preview.status === null ||
+      preview.status === 'pending' ||
+      preview.status === 'sent' ||
+      preview.status === 'delivered' ||
+      preview.status === 'read' ||
+      preview.status === 'failed') &&
+    typeof preview.timestamp === 'number'
+  )
+}
+
+const isSummaryValue = (value: unknown): value is ChatSummary => {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const summary = value as Record<string, unknown>
+  return (
+    typeof summary.id === 'string' &&
+    typeof summary.name === 'string' &&
+    typeof summary.type === 'string' &&
+    CHAT_TYPES.has(summary.type) &&
+    (summary.username === null || typeof summary.username === 'string') &&
+    (summary.phone === null || typeof summary.phone === 'string') &&
+    typeof summary.unread === 'number' &&
+    Number.isFinite(summary.unread) &&
+    summary.unread >= 0 &&
+    (summary.lastMessage === null || isPreviewValue(summary.lastMessage)) &&
+    typeof summary.lastActivityAt === 'number' &&
+    Number.isFinite(summary.lastActivityAt)
+  )
+}
+
+const loadPersistedSummaries = (storage: KeyValueStore): ChatSummary[] => {
+  const value = readJson<unknown>(storage, CHATS_STORAGE_KEY)
+  if (typeof value !== 'object' || value === null) {
+    return []
+  }
+  const chats = (value as Record<string, unknown>).chats
+  if (!Array.isArray(chats)) {
+    return []
+  }
+  return chats.filter(isSummaryValue)
+}
+
+const isDerivedChatName = (summary: ChatSummary): boolean =>
+  summary.name === summary.id || (summary.phone !== null && summary.name === summary.phone)
+
+const nameForNewChat = (fallbackName: string | null, chatId: string): string =>
+  fallbackName !== null && fallbackName.length > 0 ? fallbackName : chatId
+
+const enrichName = (existing: ChatSummary, fallbackName: string | null): string => {
+  if (!isDerivedChatName(existing)) {
+    return existing.name
+  }
+  if (fallbackName === null || fallbackName.length === 0) {
+    return existing.name
+  }
+  return fallbackName
+}
+
+export function createChatsStore(deps: ChatsStoreDeps) {
+  const persistedSummaries = loadPersistedSummaries(deps.storage)
+
+  return create<ChatsState>()((set, get) => {
+    const persist = (summaries: readonly ChatSummary[]): void => {
+      writeJson(deps.storage, CHATS_STORAGE_KEY, { version: 1, chats: summaries })
+    }
+
+    const commit = (summaries: readonly ChatSummary[]): void => {
+      const next = sortSummaries(summaries)
+      persist(next)
+      set({ summaries: next })
+    }
+
+    return {
+      summaries: sortSummaries(persistedSummaries),
+      activeChatId: null,
+
+      upsertChats(chats) {
+        if (chats.length === 0) {
+          return
+        }
+        const { summaries } = get()
+        const byId = new Map(summaries.map((summary) => [summary.id, summary]))
+        const now = deps.now()
+        for (const chat of chats) {
+          const existing = byId.get(chat.id)
+          if (existing === undefined) {
+            byId.set(chat.id, {
+              ...chat,
+              name: chat.name.length > 0 ? chat.name : chat.id,
+              unread: 0,
+              lastMessage: null,
+              lastActivityAt: now,
+            })
+            continue
+          }
+          byId.set(chat.id, {
+            ...existing,
+            name: chat.name.length > 0 ? chat.name : existing.name,
+            type: chat.type,
+            username: chat.username,
+            phone: chat.phone,
+          })
+        }
+        commit([...byId.values()])
+      },
+
+      applyNewMessage({ message, fallbackName }) {
+        const { summaries, activeChatId } = get()
+        const existing = summaries.find((summary) => summary.id === message.chatId)
+        const unreadDelta =
+          message.direction === 'incoming' && activeChatId !== message.chatId ? 1 : 0
+        const next: ChatSummary =
+          existing === undefined
+            ? {
+                id: message.chatId,
+                name: nameForNewChat(fallbackName, message.chatId),
+                type: 'unknown',
+                username: null,
+                phone: null,
+                unread: unreadDelta,
+                lastMessage: previewOf(message),
+                lastActivityAt: message.timestamp,
+              }
+            : {
+                ...existing,
+                name: enrichName(existing, fallbackName),
+                unread: existing.unread + unreadDelta,
+                lastMessage: previewOf(message),
+                lastActivityAt: message.timestamp,
+              }
+        commit([next, ...summaries.filter((summary) => summary.id !== next.id)])
+      },
+
+      applyStatusUpdate({ idMessage, status }) {
+        const { summaries } = get()
+        const target = summaries.find((summary) => summary.lastMessage?.id === idMessage)
+        const currentStatus = target?.lastMessage?.status ?? null
+        if (target === undefined || target.lastMessage === null || currentStatus === status) {
+          return
+        }
+        if (status !== 'failed' && rankOf(status) <= rankOf(currentStatus)) {
+          return
+        }
+        const updated: ChatSummary = {
+          ...target,
+          lastMessage: { ...target.lastMessage, status },
+        }
+        commit([updated, ...summaries.filter((summary) => summary.id !== target.id)])
+      },
+
+      openChat(chatId) {
+        const { summaries } = get()
+        const exists = summaries.some((summary) => summary.id === chatId)
+        if (!exists) {
+          set({ activeChatId: chatId })
+          return
+        }
+        const next = summaries.map((summary) =>
+          summary.id === chatId && summary.unread > 0 ? { ...summary, unread: 0 } : summary,
+        )
+        const changedUnread = next.some((summary, index) => summary !== summaries[index])
+        if (changedUnread) {
+          persist(next)
+        }
+        set({ activeChatId: chatId, summaries: changedUnread ? next : summaries })
+      },
+
+      closeChat() {
+        set({ activeChatId: null })
+      },
+
+      clear() {
+        deps.storage.remove(CHATS_STORAGE_KEY)
+        set({ summaries: [], activeChatId: null })
+      },
+    }
+  })
+}

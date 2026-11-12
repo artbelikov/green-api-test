@@ -3,6 +3,7 @@ import { useSessionStore } from '@/entities/session'
 import { ConnectPage } from '@/pages/connect'
 import { PlaceholderPage } from '@/pages/placeholder'
 import { AppProvider } from './providers/app-provider'
+import { bindChatStores } from './providers/chat-stores'
 import { bindNotificationEngineToSession } from './providers/notification-engine'
 
 function App() {
@@ -12,6 +13,8 @@ function App() {
     void useSessionStore.getState().resume()
     return bindNotificationEngineToSession()
   }, [])
+
+  useEffect(() => bindChatStores(), [])
 
   return (
     <AppProvider>{status === 'disconnected' ? <ConnectPage /> : <PlaceholderPage />}</AppProvider>
