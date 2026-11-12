@@ -1,4 +1,5 @@
-import { type HttpHandler, HttpResponse, http } from 'msw'
+import { delay, type HttpHandler, HttpResponse, http } from 'msw'
+import type { GreenApiNotificationEnvelope } from '@/shared/api/greenapi'
 
 const INVALID_TOKEN = 'invalid-token'
 
@@ -15,10 +16,25 @@ const DEFAULT_SETTINGS: Readonly<Record<string, string>> = {
   webhookUrl: '',
 }
 
+interface QueuedReceipt {
+  readonly receiptId: number
+  readonly body: GreenApiNotificationEnvelope
+}
+
 export const mockGateway = {
   settings: { ...DEFAULT_SETTINGS },
+  receipts: [] as QueuedReceipt[],
+  deliverNotification(envelope: GreenApiNotificationEnvelope): number {
+    const receiptId = mockGateway.nextReceiptId
+    mockGateway.nextReceiptId += 1
+    mockGateway.receipts.push({ receiptId, body: envelope })
+    return receiptId
+  },
+  nextReceiptId: 1,
   reset(): void {
     mockGateway.settings = { ...DEFAULT_SETTINGS }
+    mockGateway.receipts = []
+    mockGateway.nextReceiptId = 1
   },
 }
 
@@ -69,5 +85,29 @@ export const handlers: HttpHandler[] = [
       })
     }
     return HttpResponse.json({ chatId })
+  }),
+  http.get(endpoint('receiveNotification'), ({ request }) => {
+    if (tokenFrom(request.url) === INVALID_TOKEN) {
+      return unauthorized()
+    }
+    const oldest = mockGateway.receipts[0]
+    if (oldest !== undefined) {
+      return HttpResponse.json({ receiptId: oldest.receiptId, body: oldest.body })
+    }
+    const receiveTimeoutSeconds = Number(new URL(request.url).searchParams.get('receiveTimeout'))
+    const waitSeconds = Number.isFinite(receiveTimeoutSeconds) ? receiveTimeoutSeconds : 25
+    return delay(Math.min(waitSeconds, 60) * 1000).then(() => HttpResponse.json(null))
+  }),
+  http.delete(endpoint('deleteNotification'), ({ request }) => {
+    if (tokenFrom(request.url) === INVALID_TOKEN) {
+      return unauthorized()
+    }
+    const receiptId = Number(request.url.match(/\/deleteNotification\/[^/]+\/(\d+)/)?.[1])
+    const index = mockGateway.receipts.findIndex((receipt) => receipt.receiptId === receiptId)
+    if (!Number.isFinite(receiptId) || index === -1) {
+      return HttpResponse.json({ result: false, reason: 'Notification not found' })
+    }
+    mockGateway.receipts.splice(index, 1)
+    return HttpResponse.json({ result: true, reason: '' })
   }),
 ]

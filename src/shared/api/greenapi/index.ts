@@ -1,5 +1,6 @@
 export * from './domain'
 export * from './facades'
 export * from './http-client'
+export * from './notification-engine'
 export * from './rate-queue'
 export * from './types'

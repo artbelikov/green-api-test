@@ -114,6 +114,11 @@ export interface GreenApiNotificationReceipt {
   readonly status?: string
 }
 
+export interface ReceivedNotification {
+  readonly receiptId: number
+  readonly body: GreenApiNotificationEnvelope | null
+}
+
 export interface GreenApiReadChatResult {
   readonly setRead?: boolean
 }

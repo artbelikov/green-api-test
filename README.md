@@ -6,7 +6,7 @@ Scope kept deliberately minimal per the task: **text-only messaging** — connec
 
 > Stack: Vite 8 · React 19 · TypeScript (strict) · Mantine 9 · TanStack Query 5 · Zustand 5 · Feature Sliced Design · Biome 2 · Vitest + Testing Library + MSW (test pyramid) · deployed to Railway.com
 
-**Status: connect milestone (T2) merged — T1 (API client) + T2 (session/connect/bootstrap) on `main`; chat UI tasks T3+ in flight** (see `docs/PROGRESS.md` for the live board).
+**Status: live-receive milestone (T3) merged — T1 (API client) + T2 (session/connect/bootstrap) + T3 (notification engine long-poll) on `main`; chat UI tasks T4+ in flight** (see `docs/PROGRESS.md` for the live board).
 
 ## Requirements
 

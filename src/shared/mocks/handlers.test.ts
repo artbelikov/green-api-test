@@ -105,4 +105,60 @@ describe('mock gateway handlers', () => {
     >
     expect(settings.incomingWebhook).toBe('no')
   })
+
+  it('serves queued notifications FIFO and removes them on acknowledge', async () => {
+    mockGateway.deliverNotification({
+      typeWebhook: 'incomingMessageReceived',
+      idMessage: 'm1',
+      timestamp: 1_700_000_000,
+      senderData: { chatId: '79001234567' },
+      messageData: { typeMessage: 'textMessage', textMessageData: { textMessage: 'first' } },
+    })
+    mockGateway.deliverNotification({
+      typeWebhook: 'incomingMessageReceived',
+      idMessage: 'm2',
+      timestamp: 1_700_000_010,
+      senderData: { chatId: '79001234567' },
+      messageData: { typeMessage: 'textMessage', textMessageData: { textMessage: 'second' } },
+    })
+
+    const first = await (
+      await fetch(`${BASE}/receiveNotification/${TOKEN}?receiveTimeout=25`)
+    ).json()
+    expect(first).toMatchObject({ receiptId: 1, body: { idMessage: 'm1' } })
+
+    const repeated = await (
+      await fetch(`${BASE}/receiveNotification/${TOKEN}?receiveTimeout=25`)
+    ).json()
+    expect(repeated).toMatchObject({ receiptId: 1 })
+
+    const removeFirst = await fetch(`${BASE}/deleteNotification/${TOKEN}/1`, { method: 'DELETE' })
+    expect(await removeFirst.json()).toEqual({ result: true, reason: '' })
+
+    const second = await (
+      await fetch(`${BASE}/receiveNotification/${TOKEN}?receiveTimeout=25`)
+    ).json()
+    expect(second).toMatchObject({ receiptId: 2, body: { idMessage: 'm2' } })
+
+    const unknownAck = await fetch(`${BASE}/deleteNotification/${TOKEN}/999`, { method: 'DELETE' })
+    expect(await unknownAck.json()).toEqual({ result: false, reason: 'Notification not found' })
+
+    mockGateway.reset()
+    const empty = await (
+      await fetch(`${BASE}/receiveNotification/${TOKEN}?receiveTimeout=0`)
+    ).json()
+    expect(empty).toBeNull()
+  })
+
+  it('rejects invalid tokens on the notification methods', async () => {
+    const receiveResponse = await fetch(
+      `${BASE}/receiveNotification/invalid-token?receiveTimeout=25`,
+    )
+    const deleteResponse = await fetch(`${BASE}/deleteNotification/invalid-token/1`, {
+      method: 'DELETE',
+    })
+
+    expect(receiveResponse.status).toBe(401)
+    expect(deleteResponse.status).toBe(401)
+  })
 })

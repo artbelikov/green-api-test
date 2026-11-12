@@ -134,7 +134,8 @@ describe('facades', () => {
     )
 
     const receipt = await receiveNotification(CREDENTIALS, 25)
-    expect(receipt?.typeWebhook).toBe('incomingMessageReceived')
+    expect(receipt?.receiptId).toBe(1234567)
+    expect(receipt?.body?.typeWebhook).toBe('incomingMessageReceived')
     expect(seenUrls[0]).toContain('receiveTimeout=25')
 
     const emptyResponse = await receiveNotification(CREDENTIALS, 25)

@@ -8,12 +8,12 @@ import type {
   GreenApiDeleteNotificationResult,
   GreenApiHistoryItem,
   GreenApiInstanceState,
-  GreenApiNotificationEnvelope,
   GreenApiNotificationReceipt,
   GreenApiReadChatResult,
   GreenApiSendMessageResult,
   GreenApiSettingsPatch,
   GreenApiSettingsState,
+  ReceivedNotification,
 } from './types'
 
 export interface GreenApiFacadeOptions {
@@ -197,7 +197,7 @@ export async function receiveNotification(
   credentials: GreenApiCredentials,
   receiveTimeoutSeconds: number,
   options: GreenApiFacadeOptions = {},
-): Promise<GreenApiNotificationEnvelope | null> {
+): Promise<ReceivedNotification | null> {
   const receipt = await rateQueue.enqueue('receiveNotification', () =>
     greenApiRequest<GreenApiNotificationReceipt | null | undefined>(credentials, {
       endpoint: 'receiveNotification',
@@ -218,7 +218,10 @@ export async function receiveNotification(
       status: null,
     })
   }
-  return receipt.body ?? null
+  if (typeof receipt.receiptId !== 'number') {
+    return null
+  }
+  return { receiptId: receipt.receiptId, body: receipt.body ?? null }
 }
 
 export async function deleteNotification(
