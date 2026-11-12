@@ -6,7 +6,7 @@ Scope kept deliberately minimal per the task: **text-only messaging** — connec
 
 > Stack: Vite 8 · React 19 · TypeScript (strict) · Mantine 9 · TanStack Query 5 · Zustand 5 · Feature Sliced Design · Biome 2 · Vitest + Testing Library + MSW (test pyramid) · deployed to Railway.com
 
-**Status: scaffold (T0) merged — feature tasks T1+ in flight** (see `docs/PROGRESS.md` for the live board).
+**Status: connect milestone (T2) merged — T1 (API client) + T2 (session/connect/bootstrap) on `main`; chat UI tasks T3+ in flight** (see `docs/PROGRESS.md` for the live board).
 
 ## Requirements
 
@@ -21,9 +21,9 @@ cp .env.example .env   # optional: pre-fill credentials for local dev (gitignore
 pnpm dev
 ```
 
-Until the connect-screen milestone (T2) the app renders the styled scaffold placeholder card.
+`pnpm dev` opens the **connect screen**: enter your GREEN-API `idInstance` and `apiTokenInstance` (apiUrl is editable under _Advanced settings_) and press _Connect_. The app validates the credentials via `getStateInstance`, persists the session in `localStorage` (survives reloads), and bootstraps the webhook settings (`incomingWebhook`, `outgoingMessageWebhook`, `outgoingWebhook`, `stateWebhook`) once via `SetSettings` — idempotent, `webhookUrl` stays empty. Since the instance applies settings server-side for up to ~5 minutes, a "settling in" notice is shown until then, and empty `getChatHistory` results are normal during that window. _Disconnect_ clears the stored session.
 
-Mock/demo mode (no instance required): `VITE_API_MODE=mock` boots the MSW service worker; the scripted fake gateway handlers land with the connect milestone (T2), which also adds `?mock=1` runtime activation for reviewers.
+Mock/demo mode (no instance required): boot with `VITE_API_MODE=mock`, or open any page with **`?mock=1`** (runtime activation for reviewers — credentials are prefilled, any values connect). A scripted MSW fake gateway answers `getStateInstance`, `getSettings`/`setSettings`, and `getContactInfo`, including 401 error paths for an `invalid-token` value.
 
 ## Scripts
 
@@ -58,7 +58,7 @@ Credentials entered in the UI are stored only in the browser's `localStorage`; t
 ```text
 src/
   app/        bootstrap, providers, mock worker wiring
-  pages/      routed screens (placeholder until T2)
+  pages/      routed screens (connect, placeholder shell)
   widgets/    layout blocks (chat list pane, conversation, …)
   features/   user flows (connect, new chat, send message)
   entities/   live-sync stores (session, chats, messages)

@@ -1,1 +1,1 @@
-export { handlers } from './handlers'
+export { handlers, mockGateway } from './handlers'
