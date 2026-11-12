@@ -33,7 +33,8 @@ Statuses: `todo` / `in-progress` / `blocked:reason` / `done`.
 | Date | Session (branch) | Worked on | Outcome |
 |---|---|---|---|
 | 2026-11-12 | plan (main) | Docs research: 41 v2 + 16 v3 API pages saved, live API probes (CORS, chatId formats, getContactInfo phone resolution), MAX Web UI guides | `docs/PLAN.md`, `docs/TASKS.md`, `docs/RESOURCES.md` complete; scope = taskdesc.txt, 5-day plan; app not started |
-| 2026-11-12 | plan (main) | Reiterations: taskdesc read (scope re-cut to 5-day text-only), Biome 2 decision, MAX visual contract from real screenshots (`visual-spec.md`), expected-result trace validation | Plan obeys all 8 requirements + 5 expected-result bullets (Telegram substitution); T4/T5 AC refined: unknown-phone resolution returns empty profile (create chat named by phone, verified live), unknown-chatId upsert on incoming |
+| 2026-11-12 | plan (main) | Reiterations: taskdesc read (scope re-cut to 5-day text-only), Biome 2 decision, MAX visual contract from real screenshots (`visual-spec.md`), expected-result trace validation, tech-lead self-review (D14) | Plan obeys all 8 requirements + 5 expected-result bullets (Telegram substitution); T4/T5 AC refined: unknown-phone resolution returns empty profile (create chat named by phone, verified live), unknown-chatId upsert on incoming; T0 slimmed, ticks best-effort |
+| 2026-11-12 | plan (main) | Git init, hygiene check passed (followup.txt/taskdesc.txt ignored), root commit `706891c`, pushed to https://github.com/artbelikov/green-api-test.git (`main`) | Repository live with planning docs; next session starts T0 |
 
 ## Decisions & gotchas (append-only, numbered)
 
