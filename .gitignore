@@ -1,0 +1,38 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+dist-ssr/
+coverage/
+playwright-report/
+test-results/
+
+# local env — never commit instance credentials
+.env
+.env.local
+.env.*.local
+followup.txt
+taskdesc.txt
+redirect.pdf
+
+# logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+Thumbs.db
+.DS_Store
+
+# caches
+.turbo/
+.vite/
+.eslintcache
+*.tsbuildinfo

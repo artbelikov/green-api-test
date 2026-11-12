@@ -1,0 +1,306 @@
+﻿# GREEN-API v3 (MAX): v3-before-start
+
+> Source: https://green-api.com/v3/docs/before-start/
+> Saved: 2026-11-12
+
+Редактировать страницу")
+
+# Перед началом работы[#](#_1 "Permanent link")
+
+Перед началом работы с мессенджером MAX требуется выполнить следующие шаги:
+
+1.  [Установка мобильного приложения MAX](#mobile)
+2.  [Регистрация в Личном кабинете](#cabinet)
+3.  [Создание и авторизация инстанса](#instance)
+4.  [Получение параметров доступа к инстансу](#parameters)
+5.  [Настройка получения входящих данных](#receiving)
+6.  [Важные отличия версии v3](#important-differences)
+
+Регистрация нового номера в MAX
+
+Если Вы подключаете новый номер, на котором ранее не использовался MAX, то рекомендуем ознакомиться со статьей [Как снизить риск блокировки MAX](../faq/how-to-reduce-risk-of-blocking/)
+
+## 1\. Установка мобильного приложения MAX[#](#mobile "Permanent link")
+
+Отправка и получение сообщений мессенджера MAX выполняется с вашего мобильного телефона.
+
+1.  Установите официальное мобильное приложение:
+    
+    *   [MAX для iOS в Apple App Store](https://apps.apple.com/ru/app/max-общение-полезные-сервисы/id6739530834)
+    *   [MAX для Android в Google Store](https://play.google.com/store/apps/details?id=ru.oneme.app)
+    *   [MAX для Android в RuStore](https://www.rustore.ru/catalog/app/ru.oneme.app)
+    *   [MAX для Android в Huawei AppGallery](https://appgallery.huawei.com/app/C113469599)
+2.  Откройте приложение и нажмите `Войти`
+    
+3.  Введите свой номер телефона и подтвердите его с помощью кода из SMS
+    
+    Перечень поддерживаемых стран, особенности регистрации и отправки сообщений.
+    
+    Регистрация в данный момент возможна на мобильные номера Российской Федерации, Азербайджана, Армении, Афганистана, Беларуси, Боливии, Венесуэлы, Вьетнама, Гамбии, Гренады, Грузии, ДР Конго, Индии, Индонезии, Ирака, Казахстана, Камбоджи, Катара, Колумбии, Кубы, Кувейта, Кыргызстана, Лаоса, Ливана, Малайзии, Молдовы, Мьянмы, Никарагуа, ОАЭ, Пакистана, Палау, Республики Конго, Саудовской Аравии, Сент-Китса и Невиса, Таджикистана, Таиланда, Танзании, Туркменистана, Турции, Узбекистана.
+    
+    Подробнее о регистрации и отправке сообщений между регионами читайте в нашей статье [Регистрация в MAX, если номер не из РФ или РБ](../faq/registration-if-number-not-from-rf-rb/).
+    
+    Регистрация возможна на мобильном или десктопном приложении. Веб версия MAX не подходит для регистрации аккаунта.
+    
+4.  Выберите настройки доступа к контактам и укажите данные профиля (имя, аватар и др.)
+    
+
+После регистрации в мобильном приложении мессенджера MAX вы сможете использовать все функции приложения - отправлять и получать сообщения, совершать звонки и пр.
+
+## 2\. Регистрация в Личном кабинете[#](#cabinet "Permanent link")
+
+Для использования сервиса перейдите в [Личный кабинет](https://console.green-api.com/registration) и зарегистрируйтесь. Порядок регистрации:
+
+1.  Введите электронную почту
+    
+    > Рекомендуем использовать корпоративную почту для предотвращения потери доступа к учетной записи при увольнении сотрудника
+    
+2.  Выберите страну
+    
+3.  Примите пользовательское соглашение и нажмите на кнопку `Зарегистрироваться`
+4.  На указанный адрес электронной почты будет направлено письмо. Введите код, указанный в письме, для подтверждения вашей учетной записи
+    
+    > Рекомендуем проверять помимо общих входящих сообщений папку `Спам`, так как письмо может оказаться там
+    
+
+![register](../assets/before-start/register.png)
+
+![code](../assets/before-start/code.png)
+
+## 3\. Создание и авторизация инстанса[#](#instance "Permanent link")
+
+### Создание инстанса[#](#_2 "Permanent link")
+
+**Инстанс** - это уникальный номер шлюза для отправки и получения сообщений через мессенджер MAX.
+
+Инстанс создается в [личном кабинете](https://console.green-api.com/instanceList) и используется для организации HTTP API мессенджера MAX.
+
+> Один инстанс может одновременно обслуживать только один номер телефона (один аккаунт мессенджера MAX).  
+> В одной учетной записи личного кабинета GREEN-API можно создать неограниченное количество инстансов (каждый инстанс тарифицируется отдельно)
+
+Порядок создания инстанса:
+
+1.  В [личном кабинете](https://console.green-api.com/instanceList) нажмите на кнопку `Создать инстанс`
+2.  Выберите тарифный план
+3.  Если требуется, выберите способ оплаты и проведите оплату
+4.  Перейдите в список инстансов, нажав на кнопку `Инстансы` в боковом меню. В списке можете увидеть созданный вами инстанс
+    
+    > Переход инстанса в рабочее состояние после создания может занимать до 2-х минут
+    
+
+![create](../assets/before-start/create-instance.png)
+
+* * *
+
+### Авторизация инстанса[#](#authorization "Permanent link")
+
+Для работы с GREEN-API требуется авторизовать инстанс.
+
+Внимание!
+
+В настоящее время для авторизации по QR-коду необходимо отключить пароль для входа в мессенджере MAX.
+
+Авторизация выполняется в [Личном кабинете](https://console.green-api.com) путем получения QR-кода мессенджера [MAX](https://max.ru/) или методом [QR](../api/account/QR/).
+
+1.  Откройте на своем мобильном телефоне приложение [MAX](https://max.ru/). На устройстве перейдите в раздел `устройства`, для этого:
+    *   Нажмите на `Профиль` -> `Устройства` -> `Войти по QR-коду`
+2.  Перейдите в [личный кабинет](https://console.green-api.com/instanceList). Выберите нужный вам инстанс.
+3.  Нажмите на кнопку `Получить QR-код для авторизации`. Отсканируйте QR код.
+
+![get-gr-button](../assets/before-start/get-gr-button.png)
+
+## 4\. Получить параметры доступа к инстансу[#](#parameters "Permanent link")
+
+Для выполнения запросов HTTP API мессенджера MAX требуется использовать параметры доступа к инстансу. Параметры доступа публикуются в [личном кабинете](https://console.green-api.com):
+
+*   `apiUrl` - ссылка на хост API
+*   `mediaUrl` - ссылка на хост API для отправки файлов
+*   `idInstance` - уникальный номер инстанса
+*   `apiTokenInstance` - ключ доступа инстанса
+
+![parameters](../assets/before-start/parameters.png)
+
+Ключ доступа инстанса можно сменить при необходимости, например, в случае его компрометации. Сменить токен можно в [личном кабинете](https://console.green-api.com) самостоятельно или обратившись в [техподдержку](https://wa.me/77780739095).
+
+## 5\. Настроить получение входящих данных[#](#receiving "Permanent link")
+
+Если требуется получать входящие данные (входящие сообщения, статусы ранее отправленных сообщений и др.), то предварительно необходимо выполнить [настройку инстанса](../api/receiving/).
+
+Получение входящих уведомлений реализуется одной из следующих технологий:
+
+*   [Через HTTP API](../api/receiving/technology-http-api/)
+*   [Через Webhook Endpoint](../api/receiving/technology-webhook-endpoint/).
+
+## 6\. Важные отличия версии v3[#](#important-differences "Permanent link")
+
+Версия v3 разработана на базе текущей версии GREEN-API.
+
+Архитектура и логика взаимодействия с API осталась прежней, однако имеется ряд отличий ввиду особенностей работы мессенджера MAX.  
+С особенностями этой версии можно ознакомиться в статье [Важные отличия версии v3](../important-differences/).
+
+## Готово![#](#_3 "Permanent link")
+
+Всё готово для начала отправки и получения сообщений через мессенджер MAX!
+
+[
+
+Назад Оглавление
+
+
+
+](..)[
+
+Вперед Тарифы
+
+](../about-tariffs/)
+
+#### Меню
+
+*   [Документация](/docs/)
+*   [SDK](/docs/sdk/)
+*   [Чат-боты](/docs/chatbots/)
+*   [Интеграции](/docs/integration/)
+*   [Релизы](/docs/release/)
+*   [Статьи](https://green-api.com/articles/)
+*   [Блог](/blog/)
+*   [Новости](https://green-api.com/articles/news/)
+*   [Архив новостей](/docs/news/)
+*   [FAQ](/docs/faq/)
+*   [Стать партнером ⭐](/become-a-partner)
+*   [Тарифы](/#section-prices)
+*   [Конструктор ссылок](/link-builder)
+*   [О нас](/about)
+*   [Контакты](/contacts)
+*   [Работа у нас](/vacancies)
+*   [GREEN-API status](https://status.green-api.com/)
+
+#### Интеграции
+
+*   [Make](/docs/integration/make/)
+*   [MS Excel](/docs/integration/ms_excel/)
+*   [GoHighLevel](/docs/integration/gohighlevel/)
+*   [Rocket.chat](/docs/integration/rocket-chat/)
+*   [Zapier](/docs/integration/zapier/)
+*   [Zabbix](/docs/integration/zabbix/)
+*   [Slack](/docs/integration/slack/)
+*   [n8n](/docs/integration/n8n/)
+*   [Все интеграции...](/docs/integration/)
+
+#### SDK
+
+*   [Python](/docs/sdk/python/)
+*   [Node.js](/docs/sdk/nodejs/)
+*   [HTML](/docs/sdk/html5/)
+*   [1С:Предприятие](/docs/sdk/1c/)
+*   [PHP](/docs/sdk/php/)
+*   [Java](/docs/sdk/java/)
+*   [Go](/docs/sdk/golang/)
+*   [C++](/docs/sdk/cpp/)
+
+#### Чат-боты
+
+*   [Python](/docs/chatbots/python/)
+*   [Java](/docs/chatbots/java/)
+*   [Go](/docs/chatbots/golang/)
+*   [1С:Предприятие](/docs/chatbots/1c/)
+*   [Node.js](/docs/chatbots/nodejs/)
+
+#### Правовая информация
+
+*   [Пользовательское соглашение](/user-agreement)
+*   [Лицензионный договор-оферта](/license-agreement)
+*   [Оферта услуги «Автоплатеж»](/recurring-payment-agreement)
+*   [Политика конфиденциальности и обработки персональных данных GREEN-API](/privacy-policy)
+*   [Реестр отечественного ПО](/reestr/description)
+*   [Тарифная политика](/tariffs-policy-green-api.pdf)
+*   [GREEN-API: Logo](https://github.com/green-api/logo)
+
+#### Битрикс24
+
+*   [Пользовательское соглашение для Битрикс24](/user-agreement-bitrix24)
+*   [Политика конфиденциальности для Битрикс24](/privacy-policy-bitrix24)
+
+#### Продукты
+
+*   [GREEN-API](/)
+*   [GREEN-API: WABA](/waba)
+*   [GREEN-API: GPT](/docs/gpt/)
+*   [GREEN-API: MAX](/max)
+*   [GREEN-API: MAX BOT API](/max-bot-api)
+*   [GREEN-API: Marketing](https://green-api.com/marketing/)
+*   [GREEN-API: Telegram 🔥](/telegram)
+
+#### Правовая информация
+
+*   [Пользовательское соглашение](/user-agreement)
+*   [Лицензионный договор-оферта](/license-agreement)
+*   [Оферта услуги «Автоплатеж»](/recurring-payment-agreement)
+*   [Политика конфиденциальности и обработки персональных данных GREEN-API](/privacy-policy)
+*   [Реестр отечественного ПО](/reestr/description)
+*   [Тарифная политика](/tariffs-policy-green-api.pdf)
+*   [GREEN-API: Logo](https://github.com/green-api/logo)
+
+#### Битрикс24
+
+*   [Пользовательское соглашение для Битрикс24](/user-agreement-bitrix24)
+*   [Политика конфиденциальности для Битрикс24](/privacy-policy-bitrix24)
+
+#### Техподдержка
+
+*    [![github icon](/v3/docs/assets/github.svg) Форум](https://green-api.com/ru/forum)
+*    [![github icon](/v3/docs/assets/github.svg) Сообщить о проблеме](https://github.com/green-api/issues/issues/new)
+*    [![email icon](/v3/docs/assets/email.svg) support@green-api.com](mailto:support@green-api.com)
+*    [![whatsapp icon](/v3/docs/assets/whatsapp.svg) Канал поддержки WhatsApp](https://wa.me/77780739095)
+*    [![telegram icon](/v3/docs/assets/telegram.svg) Канал поддержки Telegram](https://t.me/greenapi_support_ru_bot)
+*    [![max icon](/v3/docs/assets/max.svg) Канал поддержки MAX](https://max.ru/id5047259512_bot)
+
+ [![googlePlay](/v3/docs/assets/mobile-application/googleplay-ru-white.svg)](https://play.google.com/store/apps/details?id=com.greenapi.console)[![googlePlay](/v3/docs/assets/mobile-application/rustore-white.svg) ](https://www.rustore.ru/catalog/app/com.greenapi.console)[![Powered by GREEN-API](/v3/docs/assets/powered_green_api.svg)](https://green-api.com/)
+
+ [![googlePlay](/v3/docs/assets/mobile-application/googleplay-ru-white.svg)](https://play.google.com/store/apps/details?id=com.greenapi.console)[![googlePlay](/v3/docs/assets/mobile-application/rustore-white.svg) ](https://www.rustore.ru/catalog/app/com.greenapi.console)[![Powered by GREEN-API](/v3/docs/assets/powered_green_api.svg)](https://green-api.com/)
+
+Общество с ограниченной ответственностью «Грин-АПИ»
+
+ИНН: 5047259512, ОГРН: 1215000131532
+
+Телефон: [+7-999-333-12-23](tel:+79993331223)
+
+141402, Московская область, г Химки, ул Московская, стр. 38А, помещ. 9/001, БЦ "Панорама"
+
+Основной ОКВЭД: 62.01 — Разработка компьютерного программного обеспечения
+
+[Единый реестр российских программ для ЭВМ и баз данных, запись № 26143 ПО «GREEN-API»](/reestr/description)
+
+[![WhatsApp](/v3/docs/assets/whatsappWhite.svg)](https://whatsapp.com/channel/0029VaHUM5TBA1f7cG29nO1C)
+
+[![Telegram](/v3/docs/assets/telegramWhite.svg)](https://t.me/green_api)
+
+[![YouTube](/v3/docs/assets/youtube.svg)](https://www.youtube.com/@green-api)
+
+[![RuTube](/v3/docs/assets/rutube.svg)](https://rutube.ru/channel/49192924)
+
+[![LinkedIn](/v3/docs/assets/linkedin.svg)](https://www.linkedin.com/company/green-api/posts/)
+
+[![Dzen](/v3/docs/assets/dzen.svg)](https://dzen.ru/id/67d93508575f0a425c77809e)
+
+[![VK](/v3/docs/assets/vk.svg)](https://vk.com/green_api)
+
+GREEN-API © 2015 -
+
+[![WhatsApp](/v3/docs/assets/whatsappWhite.svg)](https://whatsapp.com/channel/0029VaHUM5TBA1f7cG29nO1C)
+
+[![Telegram](/v3/docs/assets/telegramWhite.svg)](https://t.me/green_api)
+
+[![YouTube](/v3/docs/assets/youtube.svg)](https://www.youtube.com/@green-api)
+
+[![RuTube](/v3/docs/assets/rutube.svg)](https://rutube.ru/channel/49192924)
+
+[![LinkedIn](/v3/docs/assets/linkedin.svg)](https://www.linkedin.com/company/green-api/posts/)
+
+[![Instagram](/v3/docs/assets/instagram.svg)](https://www.instagram.com/green_api/)
+
+[![Dzen](/v3/docs/assets/dzen.svg)](https://dzen.ru/id/67d93508575f0a425c77809e)
+
+[![VK](/v3/docs/assets/vk.svg)](https://vk.com/green_api)
+
+![MIR](/v3/docs/assets/pay/mirPayment.svg) ![MIRAccept](/v3/docs/assets/pay/mirAcceptPayment.svg) ![VISA](/v3/docs/assets/pay/visaPayment.svg) ![verified by visa](/v3/docs/assets/pay/visaVerifiedPayment.svg) ![mastercard](/v3/docs/assets/pay/mastercardPayment.svg) ![mastercard SecureCode](/v3/docs/assets/pay/masterCardSecureCodePayment.svg)
+
