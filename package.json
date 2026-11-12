@@ -17,7 +17,8 @@
     "typecheck": "tsc -b",
     "test": "vitest run --coverage",
     "test:watch": "vitest",
-    "msw:init": "msw init public --save"
+    "msw:init": "msw init public --save",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "@mantine/core": "^9.8.0",
@@ -39,6 +40,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "@vitest/coverage-v8": "^5.1.0",
     "jsdom": "^31.0.0",
+    "lefthook": "^2.2.2",
     "typescript": "^5.9.3",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"
@@ -46,6 +48,11 @@
   "msw": {
     "workerDirectory": [
       "public"
+    ]
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "lefthook"
     ]
   }
 }

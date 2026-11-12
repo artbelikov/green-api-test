@@ -40,6 +40,8 @@ Mock/demo mode (no instance required): `VITE_API_MODE=mock` boots the MSW servic
 
 Planned, wired by later tasks: `pnpm test:e2e` (Playwright, T8) and `pnpm check:arch` (FSD import-direction script, T9) — see `docs/TASKS.md`.
 
+Every `git commit` runs [lefthook](https://github.com/evilmartians/lefthook) pre-commit hooks (`pnpm lint` + full `pnpm test` with coverage; installed automatically by `pnpm install` via the `prepare` script). `git commit --no-verify` skips them in emergencies.
+
 ## Environment variables
 
 | Variable                | Meaning                                                                   |
