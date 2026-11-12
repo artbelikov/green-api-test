@@ -4,13 +4,13 @@ A messenger web client built as a **test task for the “Фронтенд раз
 
 Scope kept deliberately minimal per the task: **text-only messaging** — connect with GREEN-API credentials, create a chat by entering the recipient's phone number, send a message via `sendMessage`, receive replies live via the notification HTTP API long-poll, with a two-pane UI prototyped after [web.max.ru](https://web.max.ru/).
 
-> Stack: Vite · React · TypeScript · Mantine UI · TanStack Query · Zustand · Feature Sliced Design · Vitest + Testing Library + MSW + Playwright (test pyramid) · deployed to Railway.com
+> Stack: Vite 8 · React 19 · TypeScript (strict) · Mantine 9 · TanStack Query 5 · Zustand 5 · Feature Sliced Design · Biome 2 · Vitest + Testing Library + MSW (test pyramid) · deployed to Railway.com
 
-**Status: planning complete — implementation in progress** (see `docs/PLAN.md`, `docs/TASKS.md`).
+**Status: scaffold (T0) merged — feature tasks T1+ in flight** (see `docs/PROGRESS.md` for the live board).
 
 ## Requirements
 
-- Node.js 22 LTS, pnpm 9+
+- Node.js 22 LTS, pnpm 10+ (`packageManager` pins the exact version; Node 22 enforced via `engines` and `.nvmrc`)
 - A GREEN-API instance (Telegram type) — [free "Developer" plan](https://green-api.com/telegram): register, pass Telegram authorization in their console, get `apiUrl`, `idInstance`, `apiTokenInstance`.
 
 ## Getting started
@@ -21,21 +21,55 @@ cp .env.example .env   # optional: pre-fill credentials for local dev (gitignore
 pnpm dev
 ```
 
-Without credentials the app opens a **connect screen** — enter the three values from the GREEN-API console; they are stored only in your browser's `localStorage`.
+Until the connect-screen milestone (T2) the app renders the styled scaffold placeholder card.
 
-Mock/demo mode (no instance required): `VITE_API_MODE=mock` serves a scripted fake API via MSW.
+Mock/demo mode (no instance required): `VITE_API_MODE=mock` boots the MSW service worker; the scripted fake gateway handlers land with the connect milestone (T2), which also adds `?mock=1` runtime activation for reviewers.
 
 ## Scripts
 
-| Script | Purpose |
-|---|---|
-| `pnpm dev` | Vite dev server |
-| `pnpm build` | Production build to `dist/` |
-| `pnpm preview` | Preview the production build |
-| `pnpm lint` / `pnpm lint:fix` | Biome (check / check --write); `pnpm check:arch` verifies FSD import direction |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm test` | Vitest (unit + component + integration, coverage) |
-| `pnpm test:e2e` | Playwright suite (mock mode) |
+| Script                        | Purpose                                                    |
+| ----------------------------- | ---------------------------------------------------------- |
+| `pnpm dev`                    | Vite dev server                                            |
+| `pnpm build`                  | Type-check then production build to `dist/`                |
+| `pnpm preview`                | Preview the production build                               |
+| `pnpm lint` / `pnpm lint:fix` | Biome (check / check --write)                              |
+| `pnpm typecheck`              | `tsc -b` over both TS projects                             |
+| `pnpm test`                   | Vitest run with v8 coverage (thresholds enforced)          |
+| `pnpm test:watch`             | Vitest in watch mode                                       |
+| `pnpm msw:init`               | Regenerate `public/mockServiceWorker.js` after MSW updates |
+
+Planned, wired by later tasks: `pnpm test:e2e` (Playwright, T8) and `pnpm check:arch` (FSD import-direction script, T9) — see `docs/TASKS.md`.
+
+## Environment variables
+
+| Variable                | Meaning                                                                   |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `VITE_API_MODE`         | `live` (default, real GREEN-API calls) or `mock` (MSW fake gateway)       |
+| `VITE_GREENAPI_API_URL` | Optional prefill of the gateway URL (default `https://api.green-api.com`) |
+| `VITE_GREENAPI_ID`      | Optional prefill of `idInstance`                                          |
+| `VITE_GREENAPI_TOKEN`   | Optional prefill of `apiTokenInstance` — never commit real values         |
+
+Credentials entered in the UI are stored only in the browser's `localStorage`; the repo never contains real instance data (`followup.txt`, `taskdesc.txt`, `redirect.pdf` stay gitignored).
+
+## Project structure (Feature Sliced Design)
+
+```text
+src/
+  app/        bootstrap, providers, mock worker wiring
+  pages/      routed screens (placeholder until T2)
+  widgets/    layout blocks (chat list pane, conversation, …)
+  features/   user flows (connect, new chat, send message)
+  entities/   live-sync stores (session, chats, messages)
+  shared/     api client + rate queue, config (i18n, theme), ui, mocks, lib
+```
+
+Import direction is strictly downwards (app → widgets → features → entities → shared); every slice exposes its public API via `index.ts`. UI copy lives in `src/shared/config/i18n.ts`.
+
+## Testing
+
+Pyramid per `docs/PLAN.md` §6: Vitest unit (mappers, phone normalization, rate queue), Vitest+MSW integration (notification engine), Testing Library component tests, Playwright e2e in mock mode (from T8). Coverage thresholds (85% for `shared/**`, `entities/**`, `features/**`) are enforced on every `pnpm test`.
+
+There is no GitHub Actions pipeline by design: Railway builds and deploys `main` (task T10), and the task gate is `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm build` all green before every merge.
 
 ## Documentation
 
@@ -49,11 +83,11 @@ Mock/demo mode (no instance required): `VITE_API_MODE=mock` serves a scripted fa
 
 - GREEN-API credentials grant full account access; never commit them, never share screenshots showing the token.
 - Private task files (`followup.txt` with the real token, `taskdesc.txt`, `redirect.pdf`) are gitignored — they stay local forever.
-- Rate limits apply per method (see `docs/resources/green-api/ratelimiter.md`); the client respects them.
+- Rate limits apply per method (see `docs/resources/green-api/ratelimiter.md`); the client will respect them via the per-method rate queue (T1).
 
 ## Deployment
 
-Production is served as a static SPA on Railway (Docker + nginx with SPA fallback). Deployment guide lands here on day 5 (task T10).
+Production is served as a static SPA on Railway, which builds and deploys on push to `main` — Railway is the delivery pipeline (no GitHub Actions). Platform config (build, SPA fallback, headers, `/healthz`) lands on day 5 (task T10).
 
 ## Submission package
 

@@ -1,0 +1,13 @@
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(160deg, #7fb6f0 0%, #9cc7f2 100%);
+}
+
+.card {
+  width: 100%;
+  max-width: 26rem;
+}

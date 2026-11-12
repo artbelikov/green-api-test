@@ -8,8 +8,8 @@ Statuses: `todo` / `in-progress` / `blocked:reason` / `done`.
 
 | Task | Day | Status | Branch / PR | Notes |
 |---|---|---|---|---|
-| T0 scaffold + gates | D1 | todo | — | |
-| T1 API client + rate queue + mappers | D1 | todo | — | |
+| T0 scaffold + gates | D1 | done | squash-merged to `main` | Vite 8.3.8 · React 19.3.1 · TS 5.9.3 · Mantine 9.8.0 · Biome 2.6.7 · Vitest 5.1.0 · MSW 3.0.5; no GitHub Actions (user: Railway handles delivery — D18) |
+| T1 API client + rate queue + mappers | D1 | todo | — | start here next |
 | T2 session + connect + bootstrap | D1 | todo | — | |
 | T3 notification engine | D2 | todo | — | |
 | T4 chats/messages stores | D2 | todo | — | |
@@ -23,9 +23,10 @@ Statuses: `todo` / `in-progress` / `blocked:reason` / `done`.
 
 ## Current handoff (update this block at session end)
 
-- **Last completed:** planning (docs only; no app code yet)
-- **Next up:** T0 (scaffold + quality gates) — start exactly here
-- **Blockers / open questions:** none
+- **Last completed:** T0 (scaffold + quality gates) — done and squash-merged to `main` after the user dropped GitHub Actions (D18): Vite+React+TS+Mantine skeleton under `src/` (FSD app/pages/widgets/features/entities/shared with barrels), Mantine theme + i18n wired to `docs/resources/max-web-ui/visual-spec.md` tokens, Biome 2 (single linter+formatter), Vitest 5 + coverage thresholds (85% on shared/entities/features) with placeholder render tests, MSW 3 browser worker bootstrap (`VITE_API_MODE=mock`, handlers empty), `.env.example`, README updated. `pnpm lint`/`typecheck`/`test` (100% cov)/`build` all green; `pnpm dev` serves the themed placeholder. There is NO CI workflow anymore — merge gate = local gates; Railway builds/deploys `main` (T10).
+- **Next up:** T1 (GREEN-API client + per-method rate queue + domain mappers) — see docs/TASKS.md T1; rate limits in PLAN §2; fixtures from `docs/resources/green-api/`.
+- **Blockers / open questions:** none (the earlier GitHub Actions billing lock is moot — Actions are dropped entirely, D18).
+- **Notes for T1:** TypeScript pinned 5.9.3, not the native 7.0 line (ecosystem safety, D16). `pnpm lint:fix` must never run with `docs/` in scope — `biome.json` excludes `docs` (D17); MD files in `docs/resources/` are otherwise rewritten by the formatter. Mock mode is env-only for now; `?mock=1` runtime activation belongs to T2 (PLAN D5). Playwright lands with T8, knip/lefthook/commitlint/`check:arch` land with T9 (D14).
 - **Live instance state:** Telegram instance authorized, webhook flags currently OFF (bootstrap in T2 must flip them)
 
 ## Session log (append-only)
@@ -35,6 +36,8 @@ Statuses: `todo` / `in-progress` / `blocked:reason` / `done`.
 | 2026-11-12 | plan (main) | Docs research: 41 v2 + 16 v3 API pages saved, live API probes (CORS, chatId formats, getContactInfo phone resolution), MAX Web UI guides | `docs/PLAN.md`, `docs/TASKS.md`, `docs/RESOURCES.md` complete; scope = taskdesc.txt, 5-day plan; app not started |
 | 2026-11-12 | plan (main) | Reiterations: taskdesc read (scope re-cut to 5-day text-only), Biome 2 decision, MAX visual contract from real screenshots (`visual-spec.md`), expected-result trace validation, tech-lead self-review (D14) | Plan obeys all 8 requirements + 5 expected-result bullets (Telegram substitution); T4/T5 AC refined: unknown-phone resolution returns empty profile (create chat named by phone, verified live), unknown-chatId upsert on incoming; T0 slimmed, ticks best-effort |
 | 2026-11-12 | plan (main) | Git init, hygiene check passed (followup.txt/taskdesc.txt ignored), root commit `706891c`, pushed to https://github.com/artbelikov/green-api-test.git (`main`) | Repository live with planning docs; next session starts T0 |
+| 2026-11-12 | t0-scaffold (feat/t0-scaffold) | T0 scaffold: package.json + lockfile (pnpm 10.29, Node 22), Vite 8.3.8 + React 19.3.1 + TS 5.9.3 strict stack (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), Mantine 9.8.0 provider + theme from visual-spec tokens, `@tanstack/react-query` + `zustand` wired, Biome 2.6.7 (`.editorconfig`-aware, repo-scan config), Vitest 5 + jsdom + RTL + v8 coverage (85% thresholds, green via placeholder/theme/i18n/mocks tests), MSW 3.0.5 worker init, CI workflow, `.env.example`, FSD tree + barrels, README rewrite | lint/typecheck/test(100% cov)/build green locally; branch pushed (`6930c94`); CI NOT run — GitHub account billing lock (job never started, run 43231312593); not merged per the CI-green gate |
+| 2026-11-12 | t0-scaffold (feat/t0-scaffold) | User decision: no GitHub Actions — Railway handles delivery (D18). Removed `.github/workflows/ci.yml`, README status/testing/deploy sections updated, tracker + decisions recorded; squash-merged T0 to `main`, feature branch deleted | T0 done on `main`; next session starts T1 (no open blockers) |
 
 ## Decisions & gotchas (append-only, numbered)
 
@@ -52,3 +55,7 @@ Statuses: `todo` / `in-progress` / `blocked:reason` / `done`.
 - **D12** (user decision) — Lint/format tooling: **Biome 2** instead of ESLint+Prettier (single tool, `biome check --write` in hooks/CI). Biome has no FSD-boundary plugin → T0 adds a small `pnpm check:arch` script enforcing import direction. Type-level checks remain `tsc --noEmit`, separate from Biome.
 - **D13** (visual identity verified) — Real MAX Web screenshots downloaded & read (`docs/resources/max-web-ui/screenshots/` + `visual-spec.md`): layout is **three-column** (labeled icon rail / chat list / conversation), conversation sits on a **light-blue doodle wallpaper**, incoming bubbles solid white, outgoing **translucent mint**, accents are **blue** (~#1D7DF2) — the earlier `#6641FF` purple-accent assumption was wrong and is corrected everywhere; composer = floating pill with mic→send swap; read ticks turn blue. T5/T6/T7 scope & AC updated to the visual contract.
 - **D14** (tech-lead self-review) — Schedule protection: T0 slimmed to product-critical gates (knip, lefthook, commitlint, `check:arch` deferred to T9); delivery ticks: pending→sent + failed mandatory, delivered/read best-effort (Telegram bridge may skip them); mock mode also activatable via `?mock=1` URL param (reviewer path); README must carry reviewer guidance + full limitation list (incl. `readChat` marks the linked real account's chats read).
+- **D15** (T0 scaffold) — Dependency pins resolved live (2026-11-12): Vite 8.3.8, React 19.3.1 (Mantine 9.8.0 peers demand ^19.2), Mantine 9.8.0, TS **5.9.3** — the npm-`latest` TypeScript 7.0.2 (native-port line) was rejected for ecosystem safety; TanStack Query 5.107.1, Zustand 5.1.0, Vitest 5.1.0, Biome 2.6.7, MSW 3.0.5, Playwright deferred to T8. Git hygiene AC verified pre-commit: `followup.txt`/`taskdesc.txt`/`redirect.pdf` ignored, `git status` clean of them.
+- **D16** (T0 scaffold) — Gate wiring details: `typecheck` = `tsc -b` over `tsconfig.app.json`(src+tests, strict extras)/`tsconfig.node.json`(vite.config); coverage includes `shared/entities/features` only (browser-only etc. outside; barrels excluded); layer-level `export {}` barrels are intentional scaffold anchors (knip decides their fate in T9); Mantine theme exposes visual tokens via `theme.other.max` (`declare module` augmentation) + custom `brand` palette (base `#1D7DF2` at shade 5, `primaryShade: 5`).
+- **D17** (T0 gotcha) — Biome 2.6 ships a Markdown formatter: `biome check --write .` rewrote 63 files under `docs/` before exclusion was added (append-only research docs must never be reformatted). `biome.json` now `files.includes` `!docs`; never remove that exclusion, and restore docs to HEAD if a global `--write` reintroduces noise. MSW 3 renamed `start({ onUnhandledRequest })` → `start({ onUnhandledFrame })`.
+- **D18** (user decision, T0) — **No GitHub Actions at all**: the T0 CI workflow was removed the same day it was scaffolded (user: "we do not need GitHub ci actions at all. Railway will handle it"). Merge gate per task = local `pnpm lint` · `typecheck` · `test` (coverage) · `build` all green; Railway builds/deploys `main` (T10). PLAN §6/§7, TASKS T0/T9 CI references and the earlier GitHub Actions billing lock (run 43231312593) are superseded/moot; e2e and coverage gates run locally from now on.
