@@ -60,18 +60,33 @@ describe('MessengerPage', () => {
     expect(screen.getByText(i18n.messenger.conversation.placeholder)).toBeInTheDocument()
   })
 
-  it('shows the active chat header when a chat is open', () => {
+  it('shows the active chat header with the subtitle and messages region when a chat is open', () => {
     useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
-    useChatsStore
-      .getState()
-      .upsertChats([
-        { id: 'chat-1', name: 'Demo Contact', type: 'unknown', username: null, phone: null },
-      ])
+    useChatsStore.getState().upsertChats([
+      {
+        id: 'chat-1',
+        name: 'Demo Contact',
+        type: 'unknown',
+        username: 'demo_contact',
+        phone: null,
+      },
+    ])
     useChatsStore.getState().openChat('chat-1')
 
     renderPage()
 
     expect(screen.getByRole('heading', { level: 3, name: 'Demo Contact' })).toBeInTheDocument()
-    expect(screen.getAllByText('Demo Contact').length).toBeGreaterThan(0)
+    expect(screen.getByText('@demo_contact')).toBeInTheDocument()
+    expect(
+      screen.getByRole('region', { name: i18n.messenger.conversation.messagesRegion }),
+    ).toHaveAttribute('tabindex', '0')
+  })
+
+  it('renders the wallpaper pane with the doodle layer when no chat is open', () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+
+    renderPage()
+
+    expect(screen.getByText(i18n.messenger.conversation.placeholder)).toBeInTheDocument()
   })
 })

@@ -6,7 +6,7 @@ Scope kept deliberately minimal per the task: **text-only messaging** — connec
 
 > Stack: Vite 8 · React 19 · TypeScript (strict) · Mantine 9 · TanStack Query 5 · Zustand 5 · Feature Sliced Design · Biome 2 · Vitest + Testing Library + MSW (test pyramid) · deployed to Railway.com
 
-**Status: chat list UI merged (T1–T5 on `main`) — API client, session/connect/bootstrap, notification engine long-poll, chats/messages stores with history hydrate, unread counters, optimistic send, and the MAX-Web chat list (nav rail, list pane, search, new-chat modal); conversation pane/composer tasks T6+ in flight** (see `docs/PROGRESS.md` for the live board).
+**Status: conversation UI merged (T1–T6 on `main`) — API client, session/connect/bootstrap, notification engine long-poll, chats/messages stores with history hydrate, unread counters, optimistic send, the MAX-Web chat list (nav rail, list pane, search, new-chat modal), and the conversation pane (doodle wallpaper, floating header, day-grouped white/mint bubbles, status ticks, virtualized message list with scroll anchoring and jump-to-latest); composer task T7 in flight** (see `docs/PROGRESS.md` for the live board).
 
 ## Requirements
 
@@ -61,7 +61,7 @@ src/
   pages/      routed screens (connect, messenger shell)
   widgets/    layout blocks (nav rail, chat list pane, conversation, …)
   features/   user flows (connect session, open chat, pick chat, send message)
-  entities/   live-sync stores (session, chats, messages) + chat UI (avatar, row)
+  entities/   live-sync stores (session, chats, messages) + chat UI (avatar, row) + message UI (bubble, date divider, status ticks)
   shared/     api client + rate queue, config (i18n, theme), ui, mocks, lib
 ```
 

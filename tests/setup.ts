@@ -16,6 +16,14 @@ const mediaQueryStub = (query: string): MediaQueryList =>
 
 window.matchMedia = mediaQueryStub
 
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+
+window.ResizeObserver ??= ResizeObserverStub
+
 afterEach(() => {
   cleanup()
 })

@@ -1,9 +1,10 @@
-import { ActionIcon, Text, Title, useMantineTheme } from '@mantine/core'
+import { Text, useMantineTheme } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
-import { ChatAvatar } from '@/entities/chat'
 import { selectActiveChatSummary, useChatsStore } from '@/entities/chats'
 import { i18n } from '@/shared/config'
+import { Wallpaper } from '@/shared/ui'
 import { ChatListPane } from '@/widgets/chat-list-pane'
+import { ConversationPane } from '@/widgets/conversation-pane'
 import { NavRail } from '@/widgets/nav-rail'
 import classes from './messenger-page.module.css'
 
@@ -14,7 +15,7 @@ export function MessengerPage() {
   const activeChat = useChatsStore((state) => selectActiveChatSummary(state))
   const closeChat = useChatsStore((state) => state.closeChat)
   const isMobile = useMediaQuery(MOBILE_QUERY)
-  const { other } = useMantineTheme()
+  const { max } = useMantineTheme().other
 
   const showList = !isMobile || activeChatId === null
   const showConversation = !isMobile || activeChatId !== null
@@ -28,35 +29,28 @@ export function MessengerPage() {
         </div>
       ) : null}
       {showConversation ? (
-        <section
-          className={classes.conversation}
-          style={{
-            background: `linear-gradient(160deg, ${other.max.wallpaperTop} 0%, ${other.max.wallpaperBottom} 100%)`,
-          }}
-        >
+        <section className={classes.conversation}>
           {activeChat !== null ? (
-            <header className={classes.header}>
-              {isMobile ? (
-                <ActionIcon
-                  variant="subtle"
-                  color="dark"
-                  aria-label={i18n.messenger.conversation.backAction}
-                  onClick={closeChat}
-                >
-                  ‹
-                </ActionIcon>
-              ) : null}
-              <ChatAvatar name={activeChat.name} seed={activeChat.id} url={null} size={40} />
-              <Title order={3} className={classes.chatName}>
-                {activeChat.name}
-              </Title>
-            </header>
-          ) : null}
-          <div className={classes.placeholder}>
-            <Text c="white" ta="center">
-              {i18n.messenger.conversation.placeholder}
-            </Text>
-          </div>
+            <ConversationPane
+              key={activeChat.id}
+              chat={activeChat}
+              isMobile={isMobile}
+              onBack={closeChat}
+            />
+          ) : (
+            <Wallpaper
+              topColor={max.wallpaperTop}
+              bottomColor={max.wallpaperBottom}
+              doodleColor={max.wallpaperDoodle}
+              doodleOpacity={max.wallpaperDoodleOpacity}
+            >
+              <div className={classes.placeholder}>
+                <Text c="white" ta="center">
+                  {i18n.messenger.conversation.placeholder}
+                </Text>
+              </div>
+            </Wallpaper>
+          )}
         </section>
       ) : null}
     </div>

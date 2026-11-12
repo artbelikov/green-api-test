@@ -18,21 +18,11 @@
   flex-direction: column;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
-}
-
-.chatName {
-  color: var(--mantine-color-text);
-}
-
 .placeholder {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
   color: #ffffff;
 }

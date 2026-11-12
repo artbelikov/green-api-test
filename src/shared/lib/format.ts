@@ -7,9 +7,39 @@ const startOfDay = (ms: number): number => {
   return date.getTime()
 }
 
+export const dayKeyOf = (timestampMs: number): number => startOfDay(timestampMs)
+
 export const formatChatListTime = (timestampMs: number, nowMs: number): string => {
   if (startOfDay(timestampMs) === startOfDay(nowMs)) {
     return TIME_FORMAT.format(timestampMs)
+  }
+  return DAY_FORMAT.format(timestampMs)
+}
+
+export const formatMessageTime = (timestampMs: number): string => TIME_FORMAT.format(timestampMs)
+
+export interface DayDividerLabels {
+  readonly today: string
+  readonly yesterday: string
+}
+
+const yesterdayStart = (nowMs: number): number => {
+  const date = new Date(nowMs)
+  date.setDate(date.getDate() - 1)
+  return startOfDay(date.getTime())
+}
+
+export const formatDayDivider = (
+  timestampMs: number,
+  nowMs: number,
+  labels: DayDividerLabels,
+): string => {
+  const day = startOfDay(timestampMs)
+  if (day === startOfDay(nowMs)) {
+    return labels.today
+  }
+  if (day === yesterdayStart(nowMs)) {
+    return labels.yesterday
   }
   return DAY_FORMAT.format(timestampMs)
 }

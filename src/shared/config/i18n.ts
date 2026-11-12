@@ -41,6 +41,12 @@ export const i18n = {
     conversation: {
       placeholder: 'Select a chat to start messaging',
       backAction: 'Back',
+      messagesRegion: 'Messages',
+      jumpToLatest: 'Back to latest',
+      emptyHistory: 'No messages yet',
+      historyFailed: 'Could not load messages.',
+      retryHistory: 'Retry',
+      date: { today: 'Today', yesterday: 'Yesterday' },
     },
   },
   newChat: {

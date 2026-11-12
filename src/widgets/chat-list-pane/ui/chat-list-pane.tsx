@@ -10,14 +10,13 @@ import {
   Title,
 } from '@mantine/core'
 import { useState } from 'react'
-import { ChatRow } from '@/entities/chat'
+import { ChatAvatarWithUrl, ChatRow } from '@/entities/chat'
 import { useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
 import { openChat } from '@/features/open-chat'
 import { NewChatModal } from '@/features/pick-chat'
 import { i18n } from '@/shared/config'
 import { useChatListHydration } from '../use-chat-list'
-import { ChatAvatarWithUrl } from './chat-avatar'
 import classes from './chat-list-pane.module.css'
 
 const SKELETON_KEYS = ['s1', 's2', 's3', 's4', 's5', 's6']
@@ -31,6 +30,7 @@ const STATUS_COLORS = {
 export function ChatListPane() {
   const summaries = useChatsStore((state) => state.summaries)
   const activeChatId = useChatsStore((state) => state.activeChatId)
+  const credentials = useSessionStore((state) => state.credentials)
   const status = useSessionStore((state) => state.status)
   const settling = useSessionStore((state) => state.bootstrapPhase === 'settling')
   const [search, setSearch] = useState('')
@@ -107,7 +107,14 @@ export function ChatListPane() {
               <ChatRow
                 key={summary.id}
                 chat={summary}
-                avatar={<ChatAvatarWithUrl chatId={summary.id} name={summary.name} size={54} />}
+                avatar={
+                  <ChatAvatarWithUrl
+                    chatId={summary.id}
+                    name={summary.name}
+                    size={54}
+                    credentials={credentials}
+                  />
+                }
                 active={summary.id === activeChatId}
                 now={now}
                 youPrefix={i18n.messenger.list.youPrefix}

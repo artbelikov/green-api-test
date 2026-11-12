@@ -1,0 +1,23 @@
+.tick {
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: var(--mantine-color-gray-4);
+  white-space: nowrap;
+}
+
+.tick[data-status="sent"] {
+  color: var(--mantine-color-gray-6);
+}
+
+.tick[data-status="delivered"] {
+  color: var(--mantine-color-gray-7);
+}
+
+.tick[data-status="read"] {
+  color: var(--mantine-color-brand-5);
+}
+
+.tick[data-status="failed"] {
+  color: var(--mantine-color-red-6);
+}

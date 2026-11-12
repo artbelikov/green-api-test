@@ -1,0 +1,40 @@
+import { type CSSProperties, useMantineTheme } from '@mantine/core'
+import type { MessageDeliveryStatus, MessageDirection } from '@/shared/api/greenapi'
+import { formatMessageTime } from '@/shared/lib'
+import classes from './message-bubble.module.css'
+import { StatusTicks } from './status-ticks'
+
+export interface MessageBubbleModel {
+  readonly id: string
+  readonly direction: MessageDirection
+  readonly text: string
+  readonly timestamp: number
+  readonly status: MessageDeliveryStatus | null
+}
+
+export interface MessageBubbleProps {
+  readonly message: MessageBubbleModel
+}
+
+export function MessageBubble({ message }: MessageBubbleProps) {
+  const max = useMantineTheme().other.max
+  const outgoing = message.direction === 'outgoing'
+  const paletteVars = {
+    '--max-bubble-in': max.bubbleIn,
+    '--max-bubble-out': max.bubbleOut,
+    '--max-bubble-out-opacity': String(max.bubbleOutOpacity),
+  } as CSSProperties
+  return (
+    <div className={classes.row} data-direction={message.direction} style={paletteVars}>
+      <div className={classes.bubble} data-failed={message.status === 'failed' || undefined}>
+        <span className={classes.text}>{message.text}</span>
+        <span className={classes.meta}>
+          {outgoing && message.status !== null ? <StatusTicks status={message.status} /> : null}
+          <time className={classes.time} dateTime={new Date(message.timestamp).toISOString()}>
+            {formatMessageTime(message.timestamp)}
+          </time>
+        </span>
+      </div>
+    </div>
+  )
+}
