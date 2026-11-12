@@ -39,6 +39,7 @@ Official docs are oriented on WhatsApp/Telegram (v2 generation); saved pages inc
 | `Rec-webhooks.md`, `Rec-instance-status.md`, `Rec-contact-name.md` | Integration recommendations |
 | `DownloadFile.md` | Downloading received files |
 | `Groups-CreateGroup.md`, `Groups-GetGroupData.md` | Group methods (optional scope) |
+| `CONTRACT-DIGEST.md` | **T1 digest** of the pages above: per-endpoint verbs/payloads/responses, webhook envelopes, error table, rate limits, conflicts vs live facts (PLAN §2 wins) |
 
 Note: files are raw markdown captures (Russian). Verified live behaviors that differ from docs are recorded in `docs/PLAN.md` §2.
 

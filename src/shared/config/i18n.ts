@@ -2,6 +2,14 @@ export const i18n = {
   errors: {
     missingRootElement: 'Application root element is missing',
   },
+  phone: {
+    errors: {
+      empty: 'Enter the recipient phone number',
+      notANumber: 'Enter a full phone number in international format, e.g. 79991234567',
+      unsupportedRegion:
+        'Only Russian and Kazakhstan phone numbers are supported. For other regions, enter a full chatId.',
+    },
+  },
   placeholder: {
     title: 'MAX Messenger',
     subtitle:
