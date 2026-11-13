@@ -38,6 +38,7 @@ export interface SessionState {
   readonly credentials: GreenApiCredentials | null
   readonly status: SessionStatus
   readonly reconnecting: boolean
+  readonly sessionResolved: boolean
   readonly bootstrapPhase: BootstrapPhase
   readonly settledAt: number | null
   connect(input: ConnectInput): Promise<ConnectResult>
@@ -150,6 +151,7 @@ export function createSessionStore(deps: SessionStoreDeps) {
       credentials: null,
       status: 'disconnected',
       reconnecting: false,
+      sessionResolved: false,
       bootstrapPhase: 'idle',
       settledAt: null,
 
@@ -194,6 +196,7 @@ export function createSessionStore(deps: SessionStoreDeps) {
           credentials: null,
           status: 'disconnected',
           reconnecting: false,
+          sessionResolved: true,
           bootstrapPhase: 'idle',
           settledAt: null,
         })
@@ -206,17 +209,23 @@ export function createSessionStore(deps: SessionStoreDeps) {
         resumeAttempted = true
         const persisted = loadPersisted()
         if (persisted === null) {
+          set({ sessionResolved: true })
           return
         }
         set({ credentials: persisted.credentials, status: 'connecting' })
         try {
           const failure = await validateState(persisted.credentials)
           if (failure !== null) {
-            set({ status: 'disconnected' })
+            set({ status: 'disconnected', sessionResolved: true })
             return
           }
           const resumedPhase = phaseFor(persisted.settledAt, deps.now())
-          set({ status: 'connected', bootstrapPhase: resumedPhase, settledAt: persisted.settledAt })
+          set({
+            status: 'connected',
+            sessionResolved: true,
+            bootstrapPhase: resumedPhase,
+            settledAt: persisted.settledAt,
+          })
           if (persisted.settledAt === null) {
             await ensureBootstrap(persisted.credentials)
           } else if (resumedPhase === 'settling') {
@@ -224,7 +233,7 @@ export function createSessionStore(deps: SessionStoreDeps) {
           }
         } catch (error) {
           console.warn('[session] session resume failed', error)
-          set({ status: 'disconnected' })
+          set({ status: 'disconnected', sessionResolved: true })
         }
       },
 

@@ -363,6 +363,35 @@ describe('createSessionStore.resume', () => {
 
     expect(vi.mocked(gateway.state.getStateInstance)).toHaveBeenCalledTimes(1)
   })
+
+  it('resolves the session decision on every resume exit so the UI can gate the connect screen', async () => {
+    const emptyStore = createStore()
+    expect(emptyStore.getState().sessionResolved).toBe(false)
+    await emptyStore.resume()
+    expect(emptyStore.getState().sessionResolved).toBe(true)
+
+    const failingStore = createStore({
+      gateway: createGateway({ stateError: ApiError.fromStatus(401, 'Unauthorized') }).gateway,
+      storage: (() => {
+        const storage = createMemoryStorage()
+        storage.write(
+          SETTINGS_STORAGE_KEY,
+          JSON.stringify({ credentials: TRIMMED_CREDENTIALS, settledAt: null }),
+        )
+        return storage
+      })(),
+    })
+    await failingStore.resume()
+    expect(failingStore.getState().status).toBe('disconnected')
+    expect(failingStore.getState().sessionResolved).toBe(true)
+
+    const connectedStore = createStore()
+    await connectedStore.resume()
+    expect(connectedStore.getState().sessionResolved).toBe(true)
+
+    connectedStore.disconnect()
+    expect(connectedStore.getState().sessionResolved).toBe(true)
+  })
 })
 
 describe('createSessionStore.settle phase', () => {

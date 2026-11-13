@@ -26,14 +26,34 @@ afterAll(() => {
 })
 
 describe('App', () => {
-  it('renders the connect screen when no session is stored', () => {
+  it('shows the restore screen while the resume decision is pending', () => {
+    useSessionStore.setState({
+      status: 'connecting',
+      credentials: {
+        apiUrl: 'https://gateway.test',
+        idInstance: '110100200',
+        apiTokenInstance: 'token-1',
+      },
+      sessionResolved: false,
+    })
+
     render(<App />)
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(i18n.connect.heading)
-    expect(screen.getByRole('button', { name: i18n.connect.connectAction })).toBeInTheDocument()
+    expect(screen.getByText(i18n.app.restoring)).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: i18n.connect.connectAction }),
+    ).not.toBeInTheDocument()
   })
 
-  it('resumes a persisted session into the messenger shell', async () => {
+  it('shows the connect screen once the resume decision resolved without a stored session', async () => {
+    render(<App />)
+
+    await screen.findByRole('heading', { level: 1 })
+    expect(screen.getByRole('button', { name: i18n.connect.connectAction })).toBeInTheDocument()
+    expect(screen.queryByText(i18n.app.restoring)).not.toBeInTheDocument()
+  })
+
+  it('resumes a persisted session into the messenger shell without flashing the connect screen', async () => {
     window.localStorage.setItem(
       SESSION_STORAGE_KEY,
       JSON.stringify({
@@ -51,6 +71,9 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: i18n.messenger.list.heading })).toBeInTheDocument()
     })
+    expect(
+      screen.queryByRole('button', { name: i18n.connect.connectAction }),
+    ).not.toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByText(i18n.session.settlingNotice)).toBeInTheDocument()
     })

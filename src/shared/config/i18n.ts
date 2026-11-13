@@ -17,6 +17,7 @@ export const i18n = {
   },
   app: {
     loading: 'Loading…',
+    restoring: 'Restoring session…',
   },
   chat: {
     sendFailed: 'Message was not sent. Check the connection and try again.',
