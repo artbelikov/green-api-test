@@ -133,6 +133,7 @@ export function ChatListPane() {
                 active={summary.id === activeChatId}
                 now={now}
                 youPrefix={i18n.messenger.list.youPrefix}
+                noMessagesText={i18n.messenger.list.noMessagesYet}
                 onSelect={(chatId) => void openChat(chatId)}
               />
             ))

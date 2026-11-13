@@ -27,6 +27,7 @@ const renderRow = (chat: ChatRowModel, onSelect = () => {}): void => {
         active={false}
         now={NOW}
         youPrefix="You: "
+        noMessagesText="No messages yet"
         onSelect={onSelect}
       />
     </MantineProvider>,
@@ -50,6 +51,7 @@ describe('ChatRow', () => {
           active
           now={NOW}
           youPrefix="You: "
+          noMessagesText="No messages yet"
           onSelect={() => {}}
         />
       </MantineProvider>,
@@ -87,10 +89,11 @@ describe('ChatRow', () => {
     expect(screen.getByText('✕')).toBeInTheDocument()
   })
 
-  it('falls back to the chat id when there is no last message', () => {
+  it('shows the no-messages placeholder instead of a raw id when there is no last message', () => {
     const chat: ChatRowModel = { ...baseChat, lastMessage: null }
     renderRow(chat)
-    expect(screen.getByText('79161234567')).toBeInTheDocument()
+    expect(screen.queryByText('79161234567')).not.toBeInTheDocument()
+    expect(screen.getByText('No messages yet')).toBeInTheDocument()
   })
 
   it('selects the chat on click', () => {

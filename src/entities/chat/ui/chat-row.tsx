@@ -25,6 +25,7 @@ export interface ChatRowProps {
   readonly active: boolean
   readonly now: number
   readonly youPrefix: string
+  readonly noMessagesText: string
   readonly onSelect: (chatId: string) => void
 }
 
@@ -45,7 +46,15 @@ const tickGlyphs = (status: ChatRowStatus): string => {
 
 const isOutgoingTickRead = (status: ChatRowStatus): boolean => status === 'read'
 
-export function ChatRow({ chat, avatar, active, now, youPrefix, onSelect }: ChatRowProps) {
+export function ChatRow({
+  chat,
+  avatar,
+  active,
+  now,
+  youPrefix,
+  noMessagesText,
+  onSelect,
+}: ChatRowProps) {
   const preview = chat.lastMessage
   const outgoing = preview?.direction === 'outgoing'
   const glyphs = outgoing ? tickGlyphs(preview?.status ?? null) : ''
@@ -81,7 +90,7 @@ export function ChatRow({ chat, avatar, active, now, youPrefix, onSelect }: Chat
         <span className={classes.bottom}>
           <Text component="span" className={classes.preview} truncate>
             {outgoing ? youPrefix : ''}
-            {preview?.text ?? chat.id}
+            {preview?.text ?? noMessagesText}
           </Text>
           {chat.unread > 0 ? <span className={classes.badge}>{chat.unread}</span> : null}
         </span>

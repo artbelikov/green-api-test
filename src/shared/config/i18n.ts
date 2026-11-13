@@ -35,6 +35,7 @@ export const i18n = {
       emptyTitle: 'No chats yet',
       emptyHint: 'Create your first chat — enter the recipient phone number.',
       youPrefix: 'You: ',
+      noMessagesYet: 'No messages yet',
       status: {
         connected: 'Authorized',
         connecting: 'Connecting',
