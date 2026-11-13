@@ -1,5 +1,6 @@
 import { MantineProvider } from '@mantine/core'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { useChatsStore } from '@/entities/chats'
@@ -125,6 +126,14 @@ describe('NewChatModal', () => {
 
   it('rejects a bare-word draft that the gateway echoes instead of creating a phantom chat', async () => {
     useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    server.use(
+      http.post(
+        `${CREDENTIALS.apiUrl}/waInstance${CREDENTIALS.idInstance}/getContactInfo/${CREDENTIALS.apiTokenInstance}`,
+        () => {
+          return HttpResponse.json({ chatId: 'durov' })
+        },
+      ),
+    )
     renderModal()
     typeTarget('durov')
     submitForm()

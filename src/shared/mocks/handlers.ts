@@ -166,7 +166,10 @@ export const handlers: HttpHandler[] = [
         lastSeen: 'recently',
       })
     }
-    return HttpResponse.json({ chatId })
+    return HttpResponse.json(
+      { error: 'Validation failed', details: 'Invalid chatId or not found' },
+      { status: 400 },
+    )
   }),
   http.get(endpoint('getChats'), ({ request }) => {
     if (tokenFrom(request.url) === INVALID_TOKEN) {

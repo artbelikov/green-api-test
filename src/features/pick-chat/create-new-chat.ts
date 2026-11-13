@@ -55,6 +55,15 @@ const resolveTarget = async (
   if (credentials === null) {
     return { ok: false, code: 'notConnected' }
   }
+  const openUnknownRecipientChat = (): NewChatResult => {
+    const chat = mapContactInfo({}, { chatId: target, name: displayName })
+    if (chat.id.length === 0) {
+      return { ok: false, code: 'resolveFailed' }
+    }
+    useChatsStore.getState().upsertChats([chat])
+    void openChat(chat.id)
+    return { ok: true, chatId: chat.id }
+  }
   try {
     const profile = await getContactInfo(credentials, target)
     if (!verbatimAllowed && (profile.chatId === undefined || profile.chatId === target)) {
@@ -68,6 +77,12 @@ const resolveTarget = async (
     void openChat(chat.id)
     return { ok: true, chatId: chat.id }
   } catch (error) {
+    if (error instanceof ApiError && error.kind === 'status' && error.status === 400) {
+      if (verbatimAllowed) {
+        return openUnknownRecipientChat()
+      }
+      return { ok: false, code: 'resolveFailed' }
+    }
     return { ok: false, code: mapApiError(error) }
   }
 }

@@ -72,7 +72,7 @@ describe('mock gateway handlers', () => {
     expect(updated.webhookUrl).toBe('')
   })
 
-  it('resolves the demo contact and returns an empty profile otherwise', async () => {
+  it('resolves the demo contact and answers not-found for unknown phones', async () => {
     const known = await (
       await fetch(`${BASE}/getContactInfo/${TOKEN}`, {
         method: 'POST',
@@ -82,14 +82,16 @@ describe('mock gateway handlers', () => {
     ).json()
     expect(known).toMatchObject({ chatId: '79991234567', name: 'Demo Contact' })
 
-    const unknown = await (
-      await fetch(`${BASE}/getContactInfo/${TOKEN}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId: '70000000000@c.us' }),
-      })
-    ).json()
-    expect(unknown).toEqual({ chatId: '70000000000@c.us' })
+    const unknown = await fetch(`${BASE}/getContactInfo/${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: '70000000000@c.us' }),
+    })
+    expect(unknown.status).toBe(400)
+    expect(await unknown.json()).toMatchObject({
+      error: 'Validation failed',
+      details: 'Invalid chatId or not found',
+    })
   })
 
   it('serves the chat list, registering chats contacted via getContactInfo or sendMessage', async () => {

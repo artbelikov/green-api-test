@@ -138,7 +138,7 @@ Fastest routes to try the app:
 ## Known limitations
 
 - **Unread counters are client-side** — the Telegram gateway does not expose unread counts via `getChats`; badges reset when `localStorage` is cleared or on _Disconnect_.
-- **Telegram phone caveat**: `checkWhatsapp` returns 404 on Telegram instances, so phone → chat resolution goes through `getContactInfo` with the `phone@c.us` form. Unknown recipients return an _empty profile_ (HTTP 200, not an error) — the chat is still created, named by the entered phone, and a first-ever incoming message enriches it.
+- **Telegram phone caveat**: `checkWhatsapp` returns 404 on Telegram instances, so phone → chat resolution goes through `getContactInfo` with the `phone@c.us` form. Unregistered recipients answer the gateway with _not found_ (HTTP 400, verified 2026-11-13) — the client treats a not-found answer on a valid phone as an unknown recipient and still creates the chat, named by the entered phone; a first-ever incoming message enriches it. Other errors (auth, limits, network) surface as a friendly error.
 - **`readChat` marks the linked real account's chats read** — opening a chat clears unread on the actual Telegram account behind the instance, not only inside this app.
 - **History of messages received before the webhook flags were enabled** shows up only after logout + re-authorization of the instance (gateway journal behavior); until then the app treats an empty history as normal — live notifications keep flowing — and shows the "settling in" notice while the instance applies settings (~5 min).
 - **Free "Developer" plan caps**: 3 chats, 100 availability checks — API limit errors surface as toasts.

@@ -50,15 +50,15 @@ describe('createNewChat', () => {
     expect(chats.activeChatId).toBe('79991234567')
   })
 
-  it('names the chat by the phone when the profile is empty', async () => {
+  it('creates the phone-named chat when the gateway reports the number not found', async () => {
     connectSession()
 
-    const result = await createNewChat({ phone: '70000000000', chatId: '' })
+    const result = await createNewChat({ phone: '79161112233', chatId: '' })
 
-    expect(result).toEqual({ ok: true, chatId: '70000000000@c.us' })
+    expect(result).toEqual({ ok: true, chatId: '79161112233@c.us' })
     expect(useChatsStore.getState().summaries[0]).toMatchObject({
-      id: '70000000000@c.us',
-      name: '70000000000',
+      id: '79161112233@c.us',
+      name: '79161112233',
     })
   })
 
@@ -130,8 +130,36 @@ describe('createNewChat', () => {
     })
   })
 
+  it('maps a not-found nickname draft to resolveFailed without creating a chat', async () => {
+    connectSession()
+    server.use(
+      http.post(
+        `${CREDENTIALS.apiUrl}/waInstance${CREDENTIALS.idInstance}/getContactInfo/${CREDENTIALS.apiTokenInstance}`,
+        () => {
+          return HttpResponse.json(
+            { error: 'Validation failed', details: 'Invalid chatId or not found' },
+            { status: 400 },
+          )
+        },
+      ),
+    )
+
+    const result = await createNewChat({ phone: '', chatId: '@nobody_here' })
+
+    expect(result).toEqual({ ok: false, code: 'resolveFailed' })
+    expect(useChatsStore.getState().summaries).toHaveLength(0)
+  })
+
   it('rejects a bare-word nickname draft when the gateway echoes it back', async () => {
     connectSession()
+    server.use(
+      http.post(
+        `${CREDENTIALS.apiUrl}/waInstance${CREDENTIALS.idInstance}/getContactInfo/${CREDENTIALS.apiTokenInstance}`,
+        () => {
+          return HttpResponse.json({ chatId: 'durov' })
+        },
+      ),
+    )
 
     const result = await createNewChat({ phone: '', chatId: 'durov' })
 
