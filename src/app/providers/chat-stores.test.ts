@@ -125,6 +125,27 @@ describe('bindChatStores', () => {
     unbind()
   })
 
+  it('stays quiet on a single poll failure and flags reconnecting only after two', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+    let callCount = 0
+
+    server.use(
+      http.get(`${base}/receiveNotification/${CREDENTIALS.apiTokenInstance}`, () => {
+        callCount += 1
+        return new HttpResponse('boom', { status: 500 })
+      }),
+    )
+    await vi.waitFor(
+      () => {
+        expect(callCount).toBeGreaterThanOrEqual(1)
+        expect(useSessionStore.getState().reconnecting).toBe(true)
+      },
+      { timeout: 5_000 },
+    )
+    unbind()
+  })
+
   it('marks the session reconnecting while polling fails and the session stays connected', async () => {
     const unbind = bindChatStores()
     connectSession()

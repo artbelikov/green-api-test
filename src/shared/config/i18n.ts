@@ -62,6 +62,19 @@ export const i18n = {
       offlineTooltip: 'You are offline. Reconnect to send messages.',
     },
   },
+  contactsBook: {
+    title: 'Contacts',
+    loadFailed: 'Could not load contacts.',
+    retryAction: 'Retry',
+    empty: 'No contacts found on this instance.',
+  },
+  sessionSettings: {
+    title: 'Settings',
+    apiUrlLabel: 'API URL',
+    instanceIdLabel: 'Instance ID',
+    statusLabel: 'Connection',
+    disconnectAction: 'Disconnect',
+  },
   newChat: {
     title: 'New chat',
     phoneLabel: 'Phone number',

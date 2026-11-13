@@ -17,6 +17,13 @@
   flex-shrink: 0;
 }
 
+.fabIcon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  margin: auto;
+}
+
 .statusRow {
   display: flex;
   padding: 0 16px 8px;

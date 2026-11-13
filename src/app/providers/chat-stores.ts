@@ -5,12 +5,15 @@ import { useSessionStore } from '@/entities/session'
 import { getNotificationEngine, type NotificationEngineEvent } from '@/shared/api/greenapi'
 
 const TOAST_PREVIEW_LIMIT = 120
+const RECONNECTING_AFTER_CONSECUTIVE_FAILURES = 2
 
 const toastPreviewOf = (text: string): string =>
   text.length > TOAST_PREVIEW_LIMIT ? `${text.slice(0, TOAST_PREVIEW_LIMIT)}…` : text
 
 const chatNameForToast = (chatId: string): string =>
   useChatsStore.getState().summaries.find((summary) => summary.id === chatId)?.name ?? chatId
+
+let consecutivePollFailures = 0
 
 const showBackgroundMessageToast = (chatId: string, text: string): void => {
   notifications.show({
@@ -47,17 +50,23 @@ const applyEngineEvent = (event: NotificationEngineEvent): void => {
     return
   }
   if (event.kind === 'pollFailed') {
-    useSessionStore.getState().setReconnecting(true)
+    consecutivePollFailures += 1
+    if (consecutivePollFailures >= RECONNECTING_AFTER_CONSECUTIVE_FAILURES) {
+      useSessionStore.getState().setReconnecting(true)
+    }
     return
   }
   if (event.kind === 'pollRecovered') {
+    consecutivePollFailures = 0
     useSessionStore.getState().setReconnecting(false)
     return
   }
+  consecutivePollFailures = 0
   useSessionStore.getState().disconnect()
 }
 
 export function bindChatStores(): () => void {
+  consecutivePollFailures = 0
   const engine = getNotificationEngine()
   const engineUnsubscribe = engine.subscribe(applyEngineEvent)
   const sessionUnsubscribe = useSessionStore.subscribe((state, previous) => {

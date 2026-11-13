@@ -87,6 +87,11 @@ export const mockGateway = {
   },
   nextReceiptId: 1,
   nextMessageId: 1,
+  ensureChat(chatId: string, name: string, username?: string): void {
+    if (!mockGateway.chats.some((chat) => chat.chatId === chatId)) {
+      mockGateway.chats.push({ chatId, name, type: 'user', ...(username ? { username } : {}) })
+    }
+  },
   reset(): void {
     mockGateway.settings = { ...DEFAULT_SETTINGS }
     mockGateway.receipts = []
@@ -101,9 +106,7 @@ export const mockGateway = {
 }
 
 const ensureChat = (chatId: string, name: string): void => {
-  if (!mockGateway.chats.some((chat) => chat.chatId === chatId)) {
-    mockGateway.chats.push({ chatId, name, type: 'user' })
-  }
+  mockGateway.ensureChat(chatId, name)
 }
 
 const endpoint = (method: string): RegExp =>

@@ -66,7 +66,18 @@ export function ChatListPane() {
           aria-label={i18n.messenger.list.newChatAction}
           onClick={() => setModalOpen(true)}
         >
-          +
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.4}
+            strokeLinecap="round"
+            aria-hidden
+            className={classes.fabIcon}
+          >
+            <path d="M12 5v14" />
+            <path d="M5 12h14" />
+          </svg>
         </ActionIcon>
       </div>
       <div className={classes.statusRow}>

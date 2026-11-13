@@ -6,7 +6,7 @@ Scope kept deliberately minimal per the task: **text-only messaging** — connec
 
 > Stack: Vite 8 · React 19 · TypeScript (strict) · Mantine 9 · TanStack Query 5 · Zustand 5 · Feature Sliced Design · Biome 2 · Vitest + Testing Library + MSW (test pyramid) · deployed to Railway.com
 
-**Status: MVP-2 complete (T1–T8 on `main`), T9 hardening done — API client, session/connect/bootstrap, notification engine long-poll, chats/messages stores with history hydrate, unread counters, optimistic send, the MAX-Web chat list (nav rail, list pane, search, new-chat modal), the conversation pane (doodle wallpaper, floating header, day-grouped white/mint bubbles, status ticks, virtualized message list with scroll anchoring and jump-to-latest), the composer (floating pill with mic→send swap, Enter/Shift+Enter, 4000-char guard, offline disable, failed-bubble retry), MVP-2 credibility (background-chat unread toasts, connection chip with a reconnecting state + auto-reconnect banner, failed-bubble tooltip, mobile single-pane layout), the QA layer: Playwright e2e + axe, the full e2e scenario list, code-splitting with a <300 KB gzip initial budget, knip/commitlint/FSD-arch automation, and lefthook staging+push gates, and the deploy stack: nginx Docker runtime with SPA fallback + security headers + `/healthz`, `railway.toml` and the documented GitHub-connect / `railway up` flows (T10)** (see `docs/PROGRESS.md` for the live board).
+**Status: MVP-2 complete (T1–T8 on `main`), T9 hardening done — API client, session/connect/bootstrap, notification engine long-poll, chats/messages stores with history hydrate, unread counters, optimistic send, the MAX-Web chat list (nav rail, list pane, search, new-chat modal), the conversation pane (doodle wallpaper, floating header, day-grouped white/mint bubbles, status ticks, virtualized message list with scroll anchoring and jump-to-latest), the composer (floating pill with mic→send swap, Enter/Shift+Enter, 4000-char guard, offline disable, failed-bubble retry), MVP-2 credibility (background-chat unread toasts, connection chip with a reconnecting state + auto-reconnect banner, failed-bubble tooltip, mobile single-pane layout), the QA layer: Playwright e2e + axe, the full e2e scenario list, code-splitting with a <300 KB gzip initial budget, knip/commitlint/FSD-arch automation, and lefthook staging+push gates, and the deploy stack: nginx Docker runtime with SPA fallback + security headers + `/healthz`, and the documented GitHub-connect / `railway up` flows (T10)** (see `docs/PROGRESS.md` for the live board).
 
 ## Requirements
 
@@ -90,13 +90,12 @@ There is no GitHub Actions pipeline by design: Railway builds and deploys `main`
 
 ## Deployment
 
-The app is a pure static SPA (GREEN-API sends `Access-Control-Allow-Origin: *` — verified live; no backend by design). Production runs on **Railway.com** as an nginx Docker container; Railway is the delivery pipeline (there is no GitHub Actions pipeline). Config shipped in-repo:
+The app is a pure static SPA (GREEN-API sends `Access-Control-Allow-Origin: *` — verified live; no backend by design). Production runs on **Railway.com** as an nginx Docker container; Railway is the delivery pipeline (there is no GitHub Actions pipeline). There is no platform config file in-repo: Railway auto-detects the root `Dockerfile` and builds it directly, and the deploy-time healthcheck is a one-time service setting (Railway deprecated Config as Code files, hard cutoff 2026-12-01; the Infrastructure-as-Code replacement would need the `railway` SDK + CLI apply for a single static service, so dashboard settings carry it instead). Repo config:
 
 | File                | Role                                                                                                                                                                                                                                                                                                 |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Dockerfile`        | Multi-stage build: `pnpm install --frozen-lockfile` + `pnpm build` on `node:22-alpine` (corepack pnpm per `packageManager`), then only `dist/` is copied into `nginx:alpine`, so the runtime stays a plain static host with a Docker `HEALTHCHECK` on `/healthz`.                                    |
 | `nginx.conf`        | gzip · immutable 1-year cache for hashed `/assets/*` · `index.html` never cached (SPA entry is always revalidated) · SPA fallback via `try_files` so every route is refresh-safe · `X-Content-Type-Options: nosniff` + `Referrer-Policy: no-referrer` on every response · `GET /healthz` → `200 ok`. |
-| `railway.toml`      | Pins the Dockerfile builder and points the Railway deploy healthcheck at `/healthz`.                                                                                                                                                                                                                 |
 | `public/robots.txt` | Disallows all crawlers (personal test-task app).                                                                                                                                                                                                                                                     |
 
 No build-time or runtime environment variables are required — credentials are entered by the user at the connect screen and live only in the browser's `localStorage`; the server serves static files and the browser talks to GREEN-API directly over its open CORS surface.
@@ -105,8 +104,9 @@ No build-time or runtime environment variables are required — credentials are 
 
 1. Push this repository to GitHub.
 2. In [Railway](https://railway.com) → **New project → Deploy from GitHub repo** → pick the repo.
-3. Railway builds the `Dockerfile` (`railway.toml` pins `builder = "DOCKERFILE"`); every push to `main` redeploys.
-4. Service → **Settings → Networking → Generate domain** to publish the container port publicly.
+3. Railway auto-detects and builds the root `Dockerfile`; every push to `main` redeploys.
+4. One-time: Service → **Settings → Deploy → Healthcheck** → path `/healthz`, timeout `100` (seconds) — Railway waits for `/healthz` to answer `2xx` before switching traffic to a new deployment (zero-downtime gate; the Docker `HEALTHCHECK` in the image is a separate, deploy-agnostic thing).
+5. Service → **Settings → Networking → Generate domain** to publish the container port publicly.
 
 ### Deploy — CLI (`railway up`)
 
@@ -117,6 +117,8 @@ railway init
 railway up
 railway domain
 ```
+
+Then point the same **Settings → Deploy → Healthcheck** at `/healthz` (timeout `100`) as in the GitHub-connected flow.
 
 **Deployed URL:** <https://green-api-test-production-c7007a9c.up.railway.app/> — live-run checklist verified (2026-11-13): `/healthz` 200, deep-link refresh 200 (SPA fallback), `?mock=1` + `mockServiceWorker.js` served, hashed assets 200, `robots.txt` served.
 

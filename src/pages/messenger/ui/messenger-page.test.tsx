@@ -1,8 +1,9 @@
 import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { setupServer } from 'msw/node'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
 import type { GreenApiCredentials } from '@/shared/api/greenapi'
@@ -129,5 +130,58 @@ describe('MessengerPage', () => {
     expect(
       screen.queryByRole('navigation', { name: i18n.messenger.navRail.label }),
     ).not.toBeInTheDocument()
+  })
+
+  it('opens the contacts modal from the rail and loads contacts', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    useChatsStore.getState().upsertChats([
+      {
+        id: 'chat-1',
+        name: 'Demo Contact',
+        type: 'unknown',
+        username: 'demo_contact',
+        phone: null,
+      },
+    ])
+
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: i18n.messenger.navRail.contacts }))
+    const dialog = await screen.findByRole('dialog', { name: i18n.contactsBook.title })
+    expect(dialog).toBeInTheDocument()
+    expect(await screen.findByText('Demo Contact')).toBeInTheDocument()
+  })
+
+  it('opens the settings modal from the rail and disconnects on demand', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: i18n.messenger.navRail.settings }))
+    const dialog = await screen.findByRole('dialog', { name: i18n.sessionSettings.title })
+    expect(dialog).toHaveTextContent(CREDENTIALS.idInstance)
+    expect(dialog).toHaveTextContent(i18n.messenger.list.status.connected)
+
+    await user.click(screen.getByRole('button', { name: i18n.sessionSettings.disconnectAction }))
+    expect(useSessionStore.getState().status).toBe('disconnected')
+    expect(useSessionStore.getState().credentials).toBeNull()
+  })
+
+  it('restores the chats section highlight when a modal closes', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: i18n.messenger.navRail.settings }))
+    await screen.findByRole('dialog', { name: i18n.sessionSettings.title })
+    await user.keyboard('{Escape}')
+
+    await vi.waitFor(() => {
+      const current = screen.getByRole('button', { current: 'page' })
+      expect(current).toHaveTextContent(i18n.messenger.navRail.all)
+    })
   })
 })
