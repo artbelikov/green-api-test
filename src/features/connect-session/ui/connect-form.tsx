@@ -8,7 +8,7 @@ import {
   Stack,
   TextInput,
 } from '@mantine/core'
-import { type FormEvent, useState } from 'react'
+import { type SubmitEvent, useState } from 'react'
 import { useSessionStore } from '@/entities/session'
 import { DEFAULT_GREENAPI_API_URL, i18n } from '@/shared/config'
 import { isMockRuntime } from '@/shared/lib'
@@ -28,7 +28,7 @@ export function ConnectForm() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<FieldKey, string>>>({})
   const [formError, setFormError] = useState<string | null>(null)
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     setFieldErrors({})
     setFormError(null)

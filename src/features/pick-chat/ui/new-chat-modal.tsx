@@ -1,6 +1,6 @@
 import { Alert, Button, Group, Modal, Stack, TextInput } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { type FormEvent, useEffect, useState } from 'react'
+import { type SubmitEvent, useEffect, useState } from 'react'
 import type { PhoneErrorCode } from '@/shared/api/greenapi'
 import { i18n } from '@/shared/config'
 import { createNewChat, type NewChatErrorCode } from '../create-new-chat'
@@ -32,7 +32,7 @@ export function NewChatModal({ opened, onClose }: NewChatModalProps) {
     setSubmitting(false)
   }, [opened])
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (submitting) {
       return
