@@ -6,7 +6,7 @@ import {
   type MessagesStoreDeps,
 } from './create-messages-store'
 
-export const defaultMessagesStoreDeps: MessagesStoreDeps = {
+const defaultMessagesStoreDeps: MessagesStoreDeps = {
   gateway: { getChatHistory },
   now: () => Date.now(),
   storage: localStorageStore,

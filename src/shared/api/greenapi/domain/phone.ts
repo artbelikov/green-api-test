@@ -12,7 +12,7 @@ const SUPPORTED_PHONE_PATTERN = /^7\d{10}$/
 
 const PHONE_SEPARATORS = /[\s\-()+]/g
 
-export const phoneToChatId = (digits: string): string => `${digits}@c.us`
+const phoneToChatId = (digits: string): string => `${digits}@c.us`
 
 export function normalizePhone(raw: string): PhoneNormalizationResult {
   const trimmed = raw.trim()

@@ -7,4 +7,3 @@ export {
   formatMessageTime,
 } from './format'
 export type { KeyValueStore } from './storage'
-export { localStorageStore, readJson, writeJson } from './storage'

@@ -1,13 +1,31 @@
 import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig } from 'vitest/config'
 
+const statsEnabled = process.env.BUILD_STATS === '1'
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    ...(statsEnabled
+      ? [
+          visualizer({
+            filename: 'bundle-stats.html',
+            gzipSize: true,
+            brotliSize: true,
+            sourcemap: true,
+          }),
+        ]
+      : []),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+  },
+  build: {
+    sourcemap: statsEnabled,
   },
   test: {
     dir: 'src',
@@ -15,7 +33,7 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'json-summary'],
       include: ['src/shared/**', 'src/entities/**', 'src/features/**'],
       exclude: ['**/index.ts'],
       thresholds: {

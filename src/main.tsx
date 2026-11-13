@@ -1,8 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from '@/app'
-import { startMockWorker } from '@/app/mocks'
 import { i18n } from '@/shared/config'
+import { isMockRuntime } from '@/shared/lib'
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 
@@ -11,7 +11,10 @@ async function bootstrap(): Promise<void> {
   if (!(container instanceof HTMLElement)) {
     throw new Error(i18n.errors.missingRootElement)
   }
-  await startMockWorker()
+  if (isMockRuntime()) {
+    const { startMockWorker } = await import('@/app/mocks')
+    await startMockWorker()
+  }
   createRoot(container).render(
     <StrictMode>
       <App />

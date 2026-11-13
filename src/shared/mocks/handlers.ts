@@ -77,6 +77,8 @@ export const mockGateway = {
   messages: [] as MockMessage[],
   chats: [] as MockChat[],
   autoReplyEnabled: true,
+  pollOutage: false,
+  invalidate: false,
   deliverNotification(envelope: GreenApiNotificationEnvelope): number {
     const receiptId = mockGateway.nextReceiptId
     mockGateway.nextReceiptId += 1
@@ -91,6 +93,8 @@ export const mockGateway = {
     mockGateway.messages = []
     mockGateway.chats = []
     mockGateway.autoReplyEnabled = true
+    mockGateway.pollOutage = false
+    mockGateway.invalidate = false
     mockGateway.nextReceiptId = 1
     mockGateway.nextMessageId = 1
   },
@@ -156,6 +160,18 @@ export const handlers: HttpHandler[] = [
       return unauthorized()
     }
     return HttpResponse.json(mockGateway.chats)
+  }),
+  http.get(endpoint('getContacts'), ({ request }) => {
+    if (tokenFrom(request.url) === INVALID_TOKEN) {
+      return unauthorized()
+    }
+    return HttpResponse.json(
+      mockGateway.chats.map((chat) => ({
+        id: chat.chatId,
+        name: chat.username ?? chat.name,
+        type: chat.type,
+      })),
+    )
   }),
   http.post(endpoint('getAvatar'), ({ request }) => {
     if (tokenFrom(request.url) === INVALID_TOKEN) {
@@ -225,13 +241,16 @@ export const handlers: HttpHandler[] = [
     return HttpResponse.json({ setRead: true })
   }),
   http.get(endpoint('receiveNotification'), async ({ request }) => {
-    if (tokenFrom(request.url) === INVALID_TOKEN) {
+    if (tokenFrom(request.url) === INVALID_TOKEN || mockGateway.invalidate) {
       return unauthorized()
     }
     const receiveTimeoutSeconds = Number(new URL(request.url).searchParams.get('receiveTimeout'))
     const waitSeconds = Number.isFinite(receiveTimeoutSeconds) ? receiveTimeoutSeconds : 25
     const deadline = Date.now() + Math.min(waitSeconds, 60) * 1000
     while (Date.now() < deadline) {
+      if (mockGateway.pollOutage) {
+        return new HttpResponse('Poll outage', { status: 500 })
+      }
       const oldest = mockGateway.receipts[0]
       if (oldest !== undefined) {
         return HttpResponse.json({ receiptId: oldest.receiptId, body: oldest.body })

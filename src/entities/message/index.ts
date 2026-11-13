@@ -4,4 +4,3 @@ export {
   type MessageBubbleModel,
   type MessageBubbleProps,
 } from './ui/message-bubble'
-export { StatusTicks, type StatusTicksProps } from './ui/status-ticks'

@@ -1,5 +1,6 @@
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { getContacts } from '@/shared/api/greenapi'
 import { handlers, mockGateway } from './handlers'
 
 const BASE = 'https://gateway.test/waInstance110100200'
@@ -115,6 +116,30 @@ describe('mock gateway handlers', () => {
     expect(chats[1]).toMatchObject({ chatId: '79160000000', name: '79160000000' })
 
     const unauthorizedResponse = await fetch(`${BASE}/getChats/invalid-token`)
+    expect(unauthorizedResponse.status).toBe(401)
+  })
+
+  it('serves contacts derived from the chat list through the facade', async () => {
+    const contacts = await getContacts({
+      apiUrl: 'https://gateway.test',
+      idInstance: '110100200',
+      apiTokenInstance: TOKEN,
+    })
+    expect(contacts).toEqual([])
+
+    await fetch(`${BASE}/getContactInfo/${TOKEN}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chatId: '79991234567@c.us' }),
+    })
+    const withChats = await getContacts({
+      apiUrl: 'https://gateway.test',
+      idInstance: '110100200',
+      apiTokenInstance: TOKEN,
+    })
+    expect(withChats).toEqual([{ id: '79991234567', name: 'Demo Contact', type: 'user' }])
+
+    const unauthorizedResponse = await fetch(`${BASE}/getContacts/invalid-token`)
     expect(unauthorizedResponse.status).toBe(401)
   })
 

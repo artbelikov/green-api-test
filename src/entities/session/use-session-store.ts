@@ -3,7 +3,7 @@ import { localStorageStore } from '@/shared/lib/storage'
 import { SETTLE_DURATION_MS } from './bootstrap'
 import { createSessionStore, type SessionStoreDeps } from './create-session-store'
 
-export const defaultSessionStoreDeps: SessionStoreDeps = {
+const defaultSessionStoreDeps: SessionStoreDeps = {
   gateway: {
     state: { getStateInstance },
     settings: { getSettings, setSettings },

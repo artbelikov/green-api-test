@@ -8,6 +8,14 @@ export interface BackgroundDelivery {
   readonly text: string
 }
 
+export interface StatusDelivery {
+  readonly idMessage: string
+  readonly chatId: string
+  readonly status: 'sent' | 'delivered' | 'read'
+}
+
+export type MockGatewayFlag = 'pollOutage' | 'invalidate' | 'autoReplyEnabled'
+
 export async function connectMockInstance(page: Page): Promise<void> {
   await page.goto('/?mock=1')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(i18n.connect.heading)
@@ -51,5 +59,60 @@ export function deliverBackgroundMessage(page: Page, delivery: BackgroundDeliver
       })
     },
     { ...delivery },
+  )
+}
+
+export function deliverBackgroundMessages(
+  page: Page,
+  deliveries: BackgroundDelivery[],
+): Promise<void> {
+  return page.evaluate(
+    (items) => {
+      const timestamp = Math.floor(Date.now() / 1000)
+      for (const item of items) {
+        window.mockGateway.deliverNotification({
+          typeWebhook: 'incomingMessageReceived',
+          idMessage: item.idMessage,
+          timestamp,
+          senderData:
+            item.chatName === null
+              ? { chatId: item.chatId }
+              : { chatId: item.chatId, chatName: item.chatName },
+          messageData: {
+            typeMessage: 'textMessage',
+            textMessageData: { textMessage: item.text },
+          },
+        })
+      }
+    },
+    deliveries.map((delivery) => ({ ...delivery })),
+  )
+}
+
+export function deliverStatusUpdate(page: Page, delivery: StatusDelivery): Promise<void> {
+  return page.evaluate(
+    ({ idMessage, chatId, status }) => {
+      window.mockGateway.deliverNotification({
+        typeWebhook: 'outgoingMessageStatus',
+        idMessage,
+        chatId,
+        status,
+        timestamp: Math.floor(Date.now() / 1000),
+      })
+    },
+    { ...delivery },
+  )
+}
+
+export function setMockGatewayFlag(
+  page: Page,
+  flag: MockGatewayFlag,
+  value: boolean,
+): Promise<void> {
+  return page.evaluate(
+    ([flagName, flagValue]) => {
+      window.mockGateway[flagName] = flagValue
+    },
+    [flag, value] as const,
   )
 }

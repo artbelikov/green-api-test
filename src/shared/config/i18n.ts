@@ -15,6 +15,9 @@ export const i18n = {
       'Settings are being applied on the instance — chat history may stay empty for a few minutes.',
     disconnectAction: 'Disconnect',
   },
+  app: {
+    loading: 'Loading…',
+  },
   chat: {
     sendFailed: 'Message was not sent. Check the connection and try again.',
   },

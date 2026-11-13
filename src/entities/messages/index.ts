@@ -1,9 +1,7 @@
-export {
-  createMessagesStore,
-  DEFAULT_CAPACITY_PER_CHAT,
-  type MessagesGateway,
-  type MessagesState,
-  type MessagesStoreDeps,
+export type {
+  MessagesGateway,
+  MessagesState,
+  MessagesStoreDeps,
 } from './create-messages-store'
 export {
   selectChatMessageById,
@@ -12,4 +10,4 @@ export {
   selectLastChatMessage,
 } from './selectors'
 export type { HistoryPhase, SendFailure } from './types'
-export { defaultMessagesStoreDeps, useMessagesStore } from './use-messages-store'
+export { useMessagesStore } from './use-messages-store'

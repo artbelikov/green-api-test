@@ -1,0 +1,5 @@
+{
+  "$schema": "./node_modules/knip/schema.json",
+  "exclude": ["types", "nsTypes"],
+  "project": ["src/**/*.{ts,tsx}", "tests/**/*.ts", "e2e/**/*.ts", "scripts/**/*.mjs"]
+}

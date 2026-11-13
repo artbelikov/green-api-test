@@ -1,6 +1,21 @@
 pre-commit:
   commands:
-    lint:
-      run: pnpm lint
-    test:
+    lint-staged:
+      stage_fixed: true
+      run: pnpm exec biome check --write --staged
+    check-arch:
+      run: pnpm check:arch
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
+
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm typecheck
+    tests:
       run: pnpm test
+    knip:
+      run: pnpm check:knip

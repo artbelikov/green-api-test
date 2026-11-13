@@ -1,2 +1,2 @@
-export type { MockChat, MockMessage } from './handlers'
+export type { MockChat } from './handlers'
 export { handlers, mockGateway } from './handlers'
