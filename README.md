@@ -156,12 +156,6 @@ Captured in mock mode (`?mock=1`) — never with real credentials or chats:
 | Chat list + conversation | ![Messenger](docs/screenshots/messenger.png)    |
 | Mobile single-pane       | ![Mobile](docs/screenshots/mobile.png)          |
 
-A live demo video (send → reply appears, mock mode, token never visible) is part of the submission package — see `docs/PLAN.md` §11.
-
-## Submission package
-
-Per the task instructions the final delivery is sent to hr@green-api.com: CV pdf / GitHub repo link / local-run instructions / deployed service link / screenshots. The checklist lives in `docs/PLAN.md` §11.
-
 ---
 
 Built for the GREEN-API test task. The product homepage: [green-api.com/max](https://green-api.com/max) · [green-api.com/telegram](https://green-api.com/telegram).
