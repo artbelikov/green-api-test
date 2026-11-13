@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { GreenApiCredentials, GreenApiHistoryItem, Message } from '@/shared/api/greenapi'
 import { ApiError } from '@/shared/api/greenapi'
 import type { KeyValueStore } from '@/shared/lib/storage'
@@ -51,6 +51,7 @@ type StoreOptions = {
   readonly gateway?: MessagesGateway
   readonly capacityPerChat?: number
   readonly now?: () => number
+  readonly storage?: KeyValueStore
 }
 
 const createLiveMessageEvent = (overrides: {
@@ -90,7 +91,7 @@ const createStore = (options: StoreOptions = {}) => {
   const store = createMessagesStore({
     gateway: options.gateway ?? { getChatHistory: async () => [] },
     now: options.now ?? (() => (clock += 1)),
-    storage: createMemoryStorage(),
+    storage: options.storage ?? createMemoryStorage(),
     capacityPerChat: options.capacityPerChat ?? 200,
   })
   return store
@@ -476,7 +477,7 @@ describe('createMessagesStore — capacity and persistence', () => {
     expect(messages[199]?.id).toBe('m249')
   })
 
-  it('persists capped messages and reloads them without pending bubbles', async () => {
+  it('persists capped messages and reloads them without pending bubbles once the write window elapses', async () => {
     const storage = createMemoryStorage()
     let clock = 1_000
     const historyEntry = {
@@ -494,21 +495,28 @@ describe('createMessagesStore — capacity and persistence', () => {
       capacityPerChat: 200,
     })
 
-    store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm1', timestamp: 5_000 }))
-    const pendingId = store.getState().appendPending('chat-1', 'unsent yet')
-    await store.getState().loadChatHistory('chat-1', CREDENTIALS)
+    vi.useFakeTimers()
+    try {
+      store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm1', timestamp: 5_000 }))
+      const pendingId = store.getState().appendPending('chat-1', 'unsent yet')
+      await store.getState().loadChatHistory('chat-1', CREDENTIALS)
 
-    const revived = createMessagesStore({
-      gateway: { getChatHistory: async () => [] },
-      now: () => 0,
-      storage,
-      capacityPerChat: 200,
-    })
+      vi.advanceTimersByTime(500)
 
-    const messages = revived.getState().byChat['chat-1'] ?? []
-    expect(messages.map((message) => message.id)).toEqual(['h1', 'm1'])
-    expect(messages.some((message) => message.id === pendingId)).toBe(false)
-    expect(revived.getState().history['chat-1']).toBe('ready')
+      const revived = createMessagesStore({
+        gateway: { getChatHistory: async () => [] },
+        now: () => 0,
+        storage,
+        capacityPerChat: 200,
+      })
+
+      const messages = revived.getState().byChat['chat-1'] ?? []
+      expect(messages.map((message) => message.id)).toEqual(['h1', 'm1'])
+      expect(messages.some((message) => message.id === pendingId)).toBe(false)
+      expect(revived.getState().history['chat-1']).toBe('ready')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('ignores malformed persisted payloads', () => {
@@ -557,5 +565,162 @@ describe('createMessagesStore — selectors', () => {
 
     expect(store.getState().byChat['chat-a']).toBe(referenceBefore)
     expect(stateAfter).not.toBe(stateBefore)
+  })
+})
+
+describe('createMessagesStore — persistence throttling', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('defers the write to the trailing window instead of persisting synchronously', () => {
+    const storage = createMemoryStorage()
+    const store = createStore({ storage })
+
+    vi.useFakeTimers()
+    store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm1', timestamp: 1_000 }))
+
+    expect(storage.read('green-api-messenger:messages:v1')).toBeNull()
+
+    vi.advanceTimersByTime(500)
+
+    expect(storage.read('green-api-messenger:messages:v1')).not.toBeNull()
+  })
+
+  it('coalesces a burst of events within the window into a single write', () => {
+    const storage = createMemoryStorage()
+    const store = createStore({ storage })
+
+    vi.useFakeTimers()
+    const writeSpy = vi.spyOn(storage, 'write')
+    for (let index = 0; index < 5; index += 1) {
+      store
+        .getState()
+        .applyMessageEvent(createLiveMessageEvent({ id: `m${index}`, timestamp: index }))
+    }
+
+    vi.advanceTimersByTime(500)
+
+    expect(writeSpy).toHaveBeenCalledTimes(1)
+    const persisted = storage.read('green-api-messenger:messages:v1')
+    expect(persisted).not.toBeNull()
+  })
+
+  it('writes once per window under a continuous event stream', () => {
+    const storage = createMemoryStorage()
+    const store = createStore({ storage })
+
+    vi.useFakeTimers()
+    const writeSpy = vi.spyOn(storage, 'write')
+    for (let tick = 0; tick < 3; tick += 1) {
+      store
+        .getState()
+        .applyMessageEvent(createLiveMessageEvent({ id: `m-${tick}`, timestamp: tick }))
+      vi.advanceTimersByTime(500)
+    }
+
+    expect(writeSpy).toHaveBeenCalledTimes(3)
+  })
+
+  it('captures the latest state of the window, not the state at schedule time', () => {
+    const storage = createMemoryStorage()
+    const store = createStore({ storage })
+
+    vi.useFakeTimers()
+    store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm1', timestamp: 1_000 }))
+    store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm2', timestamp: 2_000 }))
+    vi.advanceTimersByTime(499)
+    store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm3', timestamp: 3_000 }))
+    vi.advanceTimersByTime(1)
+
+    const persisted = JSON.parse(storage.read('green-api-messenger:messages:v1') ?? '{}') as {
+      chats: Record<string, { id: string }[]>
+    }
+    expect(persisted.chats['chat-1']?.map((message) => message.id)).toEqual(['m1', 'm2', 'm3'])
+  })
+
+  it('flushes pending persistence on beforeunload', () => {
+    const storage = createMemoryStorage()
+    const store = createStore({ storage })
+
+    store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm1', timestamp: 1_000 }))
+    expect(storage.read('green-api-messenger:messages:v1')).toBeNull()
+
+    window.dispatchEvent(new Event('beforeunload'))
+
+    expect(storage.read('green-api-messenger:messages:v1')).not.toBeNull()
+  })
+
+  it('cancels the pending write on clear so a re-connected session cannot resurrect data', () => {
+    const storage = createMemoryStorage()
+    const store = createStore({ storage })
+
+    vi.useFakeTimers()
+    store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm1', timestamp: 1_000 }))
+    store.getState().clear()
+    vi.advanceTimersByTime(1_000)
+
+    expect(storage.read('green-api-messenger:messages:v1')).toBeNull()
+    expect(store.getState().byChat).toEqual({})
+  })
+
+  it('discards an in-flight history load that resolves after a clear', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const storage = createMemoryStorage()
+    const store = createMessagesStore({
+      gateway: {
+        getChatHistory: async () => {
+          await gate
+          return [
+            {
+              type: 'incoming',
+              idMessage: 'h1',
+              timestamp: 100,
+              typeMessage: 'textMessage',
+              chatId: 'chat-1',
+              textMessage: 'late arrival',
+            } satisfies GreenApiHistoryItem,
+          ]
+        },
+      },
+      now: () => 1,
+      storage,
+      capacityPerChat: 200,
+    })
+
+    vi.useFakeTimers()
+    const loadPromise = store.getState().loadChatHistory('chat-1', CREDENTIALS)
+    store.getState().clear()
+    release()
+
+    expect(await loadPromise).toBe('failed')
+    vi.advanceTimersByTime(500)
+
+    expect(store.getState().byChat).toEqual({})
+    expect(store.getState().history).toEqual({})
+    expect(storage.read('green-api-messenger:messages:v1')).toBeNull()
+  })
+
+  it('warns on a failed history request without changing the returned phase', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      const store = createStore({
+        gateway: {
+          getChatHistory: async () => {
+            throw ApiError.fromStatus(500, 'boom')
+          },
+        },
+      })
+
+      expect(await store.getState().loadChatHistory('chat-1', CREDENTIALS)).toBe('failed')
+      expect(store.getState().history['chat-1']).toBe('failed')
+      expect(warnSpy).toHaveBeenCalledTimes(1)
+      expect(warnSpy.mock.calls[0]?.[0]).toContain('history')
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })

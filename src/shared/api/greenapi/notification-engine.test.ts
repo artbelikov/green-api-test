@@ -442,6 +442,44 @@ describe('notification engine failure handling', () => {
     expect(gateway.receiveCalls).toBe(1)
   })
 
+  it('settles stop immediately when abort lands during the pollFailed emit await', async () => {
+    let releaseListener: () => void = () => undefined
+    const listenerGate = new Promise<void>((resolve) => {
+      releaseListener = resolve
+    })
+    const gateway = new FakeNotificationGateway([
+      { kind: 'fail', error: ApiError.network(new Error('offline')) },
+    ])
+    const scheduler = new ManualScheduler()
+    const blockedListener = vi.fn(async (event: NotificationEngineEvent) => {
+      if (event.kind === 'pollFailed') {
+        await listenerGate
+      }
+    })
+    const engine = createNotificationEngine({
+      gateway,
+      scheduler,
+      initialBackoffMs: 60_000,
+      maxBackoffMs: 60_000,
+    })
+    const unsubscribe = engine.subscribe(blockedListener)
+
+    engine.start(CREDENTIALS)
+    await vi.waitFor(() => {
+      expect(gateway.receiveCalls).toBe(1)
+    })
+    expect(scheduler.pendingDelays()).toEqual([])
+
+    const stopPromise = engine.stop()
+    releaseListener()
+
+    await expect(stopPromise).resolves.toBeUndefined()
+    await vi.waitFor(() => {
+      expect(scheduler.pendingDelays()).toEqual([])
+    })
+    unsubscribe()
+  })
+
   it('emits sessionInvalidated and halts on 401 without further polling', async () => {
     const gateway = new FakeNotificationGateway([
       { kind: 'fail', error: new ApiError('Unauthorized', { kind: 'status', status: 401 }) },

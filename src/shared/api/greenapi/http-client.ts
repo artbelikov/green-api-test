@@ -4,6 +4,9 @@ export type GreenApiCredentials = {
   readonly apiTokenInstance: string
 }
 
+export const credentialsFingerprint = (credentials: GreenApiCredentials): string =>
+  [credentials.apiUrl, credentials.idInstance, credentials.apiTokenInstance].join('::')
+
 export type ApiErrorKind = 'status' | 'timeout' | 'aborted' | 'network' | 'malformed'
 
 export type ApiErrorInit = {

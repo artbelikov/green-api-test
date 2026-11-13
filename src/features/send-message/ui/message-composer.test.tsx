@@ -182,16 +182,17 @@ describe('MessageComposer', () => {
     expect(useMessagesStore.getState().byChat['chat-1']).toBeUndefined()
   })
 
-  it('disables sending while the session is offline and explains it in the tooltip', () => {
+  it('keeps the send affordance wired without dead disabled states', () => {
+    connectSession()
     renderComposer()
-    fireEvent.change(textarea(), { target: { value: 'hello while offline' } })
-
+    fireEvent.change(textarea(), { target: { value: 'hello' } })
     const send = screen.getByRole('button', { name: i18n.messenger.composer.sendAction })
-    expect(send).toBeDisabled()
-    expect(send).toHaveAttribute('title', i18n.messenger.composer.offlineTooltip)
 
-    fireEvent.keyDown(textarea(), { key: 'Enter' })
+    expect(send).toBeEnabled()
+    expect(send).not.toHaveAttribute('title')
 
-    expect(useMessagesStore.getState().byChat['chat-1']).toBeUndefined()
+    fireEvent.click(send)
+
+    expect(textarea()).toHaveValue('')
   })
 })

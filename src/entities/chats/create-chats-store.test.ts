@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Chat, Message } from '@/shared/api/greenapi'
 import type { KeyValueStore } from '@/shared/lib/storage'
 import { createChatsStore } from './create-chats-store'
@@ -40,6 +40,10 @@ const incoming = (id: string, chatId: string, text: string, timestamp: number): 
 })
 
 describe('createChatsStore', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('upserts chats sorted by last activity with a deterministic tiebreak', () => {
     const { storage, now } = memory()
     const store = createChatsStore({ storage, now })
@@ -263,17 +267,27 @@ describe('createChatsStore', () => {
     expect(store.getState().activeChatId).toBeNull()
   })
 
-  it('persists summaries and reloads them in a fresh store instance', () => {
+  it('persists summaries and reloads them in a fresh store instance once the write window elapses', () => {
     const { storage, now } = memory()
     const store = createChatsStore({ storage, now })
 
+    vi.useFakeTimers()
     store.getState().applyNewMessage({
       message: incoming('m1', '111', 'persisted', now()),
       fallbackName: 'Persisted Chat',
     })
 
+    expect(storage.read('green-api-messenger:chats:v1')).toBeNull()
+
+    vi.advanceTimersByTime(500)
+
     const revived = createChatsStore({ storage, now })
     expect(revived.getState().summaries).toEqual(store.getState().summaries)
+    expect(revived.getState().summaries[0]).toMatchObject({
+      id: '111',
+      name: 'Persisted Chat',
+      lastMessage: { id: 'm1' },
+    })
   })
 
   it('ignores malformed persisted payloads', () => {
@@ -317,5 +331,83 @@ describe('createChatsStore', () => {
       .applyNewMessage({ message: incoming('m3', 'ccc', 'z', at), fallbackName: null })
 
     expect(store.getState().summaries.map((summary) => summary.id)).toEqual(['aaa', 'bbb', 'ccc'])
+  })
+
+  it('ignores an event older than the current preview so the sort position never regresses', () => {
+    const { storage, now } = memory()
+    const store = createChatsStore({ storage, now })
+
+    store.getState().applyNewMessage({
+      message: incoming('new', '222', 'fresh', now() + 2_000),
+      fallbackName: null,
+    })
+    store.getState().applyNewMessage({
+      message: incoming('old', '111', 'stale', now() + 1_000),
+      fallbackName: null,
+    })
+    store.getState().applyNewMessage({
+      message: incoming('older', '222', 'late out-of-order', now() + 1_000),
+      fallbackName: null,
+    })
+
+    const summary = store.getState().summaries.find((entry) => entry.id === '222')
+    expect(summary?.lastMessage).toMatchObject({ id: 'new', text: 'fresh' })
+    expect(summary?.lastActivityAt).toBe(now() + 2_000)
+    expect(summary?.unread).toBe(1)
+    expect(store.getState().summaries.map((summary) => summary.id)).toEqual(['222', '111'])
+  })
+
+  it('still applies a same-timestamp preview and unknown-chat upserts from out-of-order events', () => {
+    const { storage, now } = memory()
+    const store = createChatsStore({ storage, now })
+
+    store
+      .getState()
+      .applyNewMessage({ message: incoming('m1', '111', 'first', now()), fallbackName: null })
+    store
+      .getState()
+      .applyNewMessage({ message: incoming('m2', '111', 'second', now()), fallbackName: null })
+
+    expect(
+      store.getState().summaries.find((entry) => entry.id === '111')?.lastMessage,
+    ).toMatchObject({ id: 'm2', text: 'second' })
+
+    store.getState().applyNewMessage({
+      message: incoming('m0', 'unknown-chat', 'never existed', now() - 5_000),
+      fallbackName: 'Stranger',
+    })
+    expect(store.getState().summaries.find((entry) => entry.id === 'unknown-chat')).toMatchObject({
+      name: 'Stranger',
+    })
+  })
+
+  it('flushes the pending summary write on beforeunload', () => {
+    const { storage, now } = memory()
+    const store = createChatsStore({ storage, now })
+
+    store.getState().applyNewMessage({
+      message: incoming('m1', '111', 'persisted', now()),
+      fallbackName: null,
+    })
+    expect(storage.read('green-api-messenger:chats:v1')).toBeNull()
+
+    window.dispatchEvent(new Event('beforeunload'))
+
+    expect(storage.read('green-api-messenger:chats:v1')).not.toBeNull()
+  })
+
+  it('cancels the pending write on clear', () => {
+    const { storage, now } = memory()
+    const store = createChatsStore({ storage, now })
+
+    vi.useFakeTimers()
+    store.getState().applyNewMessage({
+      message: incoming('m1', '111', 'persisted', now()),
+      fallbackName: null,
+    })
+    store.getState().clear()
+    vi.advanceTimersByTime(1_000)
+
+    expect(storage.read('green-api-messenger:chats:v1')).toBeNull()
   })
 })

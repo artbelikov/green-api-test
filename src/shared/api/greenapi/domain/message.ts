@@ -32,6 +32,22 @@ export type MessageNotificationEvent = Extract<NotificationEvent, { readonly kin
 
 export type StatusNotificationEvent = Extract<NotificationEvent, { readonly kind: 'status' }>
 
+const DELIVERY_STATUS_RANK: Readonly<Record<MessageDeliveryStatus, number>> = {
+  failed: 0,
+  pending: 0,
+  sent: 1,
+  delivered: 2,
+  read: 3,
+}
+
+export const deliveryStatusRank = (status: MessageDeliveryStatus | null): number =>
+  status === null ? 0 : DELIVERY_STATUS_RANK[status]
+
+export const escalatesDeliveryStatus = (
+  current: MessageDeliveryStatus | null,
+  next: MessageDeliveryStatus,
+): boolean => next === 'failed' || deliveryStatusRank(next) > deliveryStatusRank(current)
+
 const HISTORY_DIRECTIONS: ReadonlySet<string> = new Set(['incoming', 'outgoing'])
 
 const outgoingStatus = (raw: string | undefined): MessageDeliveryStatus => {

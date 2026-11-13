@@ -363,4 +363,63 @@ describe('facades', () => {
     expect(failure).toBeInstanceOf(ApiError)
     expect((failure as ApiError).kind).toBe('timeout')
   })
+
+  it('does not coalesce identical coalesce ids across different credentials', async () => {
+    const otherCredentials: GreenApiCredentials = {
+      apiUrl: CREDENTIALS.apiUrl,
+      idInstance: '110100201',
+      apiTokenInstance: 'token-2',
+    }
+    const otherBase = `${otherCredentials.apiUrl}/waInstance${otherCredentials.idInstance}`
+    let ownCalls = 0
+    let otherCalls = 0
+    server.use(
+      http.get(`${base}/getChats/${CREDENTIALS.apiTokenInstance}`, () => {
+        ownCalls += 1
+        return HttpResponse.json([{ chatId: 'own' }])
+      }),
+      http.get(`${otherBase}/getChats/${otherCredentials.apiTokenInstance}`, () => {
+        otherCalls += 1
+        return HttpResponse.json([{ chatId: 'other' }])
+      }),
+    )
+
+    const [own, other] = await Promise.all([getChats(CREDENTIALS), getChats(otherCredentials)])
+
+    expect(own).toEqual([{ chatId: 'own' }])
+    expect(other).toEqual([{ chatId: 'other' }])
+    expect(ownCalls).toBe(1)
+    expect(otherCalls).toBe(1)
+  })
+
+  it('does not share contact-lookup coalescing across different credentials', async () => {
+    const otherCredentials: GreenApiCredentials = {
+      apiUrl: CREDENTIALS.apiUrl,
+      idInstance: '110100201',
+      apiTokenInstance: 'token-2',
+    }
+    const otherBase = `${otherCredentials.apiUrl}/waInstance${otherCredentials.idInstance}`
+    let ownCalls = 0
+    let otherCalls = 0
+    server.use(
+      http.post(`${base}/getContactInfo/${CREDENTIALS.apiTokenInstance}`, () => {
+        ownCalls += 1
+        return HttpResponse.json({ chatId: '79161234567', name: 'Own Contact' })
+      }),
+      http.post(`${otherBase}/getContactInfo/${otherCredentials.apiTokenInstance}`, () => {
+        otherCalls += 1
+        return HttpResponse.json({ chatId: '79161234567', name: 'Other Instance Contact' })
+      }),
+    )
+
+    const [own, other] = await Promise.all([
+      getContactInfo(CREDENTIALS, '79161234567@c.us'),
+      getContactInfo(otherCredentials, '79161234567@c.us'),
+    ])
+
+    expect(own).toEqual({ chatId: '79161234567', name: 'Own Contact' })
+    expect(other).toEqual({ chatId: '79161234567', name: 'Other Instance Contact' })
+    expect(ownCalls).toBe(1)
+    expect(otherCalls).toBe(1)
+  })
 })

@@ -19,11 +19,14 @@ const hydratePreviewsInBackground = async (
 ): Promise<void> => {
   for (const chatId of chatIds) {
     const summary = useChatsStore.getState().summaries.find((entry) => entry.id === chatId)
-    if (summary?.lastMessage !== null || useSessionStore.getState().credentials === null) {
+    if (summary?.lastMessage !== null || useSessionStore.getState().credentials !== credentials) {
       continue
     }
     try {
       const history = await getChatHistory(credentials, { chatId, count: PREVIEW_SWEEP_COUNT })
+      if (useSessionStore.getState().credentials !== credentials) {
+        continue
+      }
       const latest = history.map(mapHistoryMessage).find((message) => message !== null) ?? null
       if (latest !== null) {
         useChatsStore
@@ -48,6 +51,9 @@ export const useChatListHydration = (): ChatListHydration => {
         return false
       }
       const items = await getChats(credentials)
+      if (useSessionStore.getState().credentials !== credentials) {
+        return false
+      }
       const chats = items.map(mapChatListItem).filter((chat): chat is Chat => chat !== null)
       useChatsStore.getState().upsertChats(chats)
       void hydratePreviewsInBackground(

@@ -17,7 +17,7 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
     return (
       <Modal opened={opened} onClose={onClose} title={i18n.sessionSettings.title} centered>
         <Text c="dimmed" size="sm">
-          {i18n.newChat.errors.notConnected}
+          {i18n.sessionSettings.errors.notConnected}
         </Text>
       </Modal>
     )

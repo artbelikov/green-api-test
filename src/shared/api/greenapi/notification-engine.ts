@@ -226,8 +226,11 @@ export function createNotificationEngine(deps: NotificationEngineDeps): Notifica
     }
   }
 
-  const waitBackoff = (delayMs: number, signal: AbortSignal): Promise<void> =>
-    new Promise((resolve) => {
+  const waitBackoff = (delayMs: number, signal: AbortSignal): Promise<void> => {
+    if (signal.aborted) {
+      return Promise.resolve()
+    }
+    return new Promise((resolve) => {
       let cancelTimer: (() => void) | null = null
       const finish = (): void => {
         signal.removeEventListener('abort', finish)
@@ -237,6 +240,7 @@ export function createNotificationEngine(deps: NotificationEngineDeps): Notifica
       signal.addEventListener('abort', finish, { once: true })
       cancelTimer = scheduler.schedule(delayMs, finish)
     })
+  }
 
   const admit = async (received: ReceivedNotification): Promise<void> => {
     if (isAborted()) {

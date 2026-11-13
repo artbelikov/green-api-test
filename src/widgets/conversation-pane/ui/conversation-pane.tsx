@@ -13,6 +13,7 @@ import { i18n } from '@/shared/config'
 import { Wallpaper } from '@/shared/ui'
 import { buildConversationRows } from '../lib/conversation-rows'
 import { isPinnedToBottom } from '../lib/scroll-pinning'
+import { useReactiveNow } from '../lib/use-reactive-now'
 import classes from './conversation-pane.module.css'
 
 const SKELETON_KEYS = ['s1', 's2', 's3', 's4', 's5']
@@ -43,10 +44,11 @@ export function ConversationPane({ chat, isMobile, onBack }: ConversationPanePro
   const credentials = useSessionStore((state) => state.credentials)
   const messages = useMessagesStore((state) => selectChatMessages(state, chat.id))
   const historyPhase = useMessagesStore((state) => state.history[chat.id] ?? 'ready')
+  const nowMs = useReactiveNow()
 
   const rows = useMemo(
-    () => buildConversationRows(messages, Date.now(), i18n.messenger.conversation.date),
-    [messages],
+    () => buildConversationRows(messages, nowMs, i18n.messenger.conversation.date),
+    [messages, nowMs],
   )
 
   const scrollRef = useRef<HTMLElement | null>(null)

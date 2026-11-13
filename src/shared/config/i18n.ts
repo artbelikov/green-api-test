@@ -7,13 +7,12 @@ export const i18n = {
       empty: 'Enter the recipient phone number',
       notANumber: 'Enter a full phone number in international format, e.g. 79991234567',
       unsupportedRegion:
-        'Only Russian and Kazakhstan phone numbers are supported. For other regions, enter a full chatId.',
+        'Only Russian and Kazakhstan phone numbers are supported. For other contacts, enter the @nickname.',
     },
   },
   session: {
     settlingNotice:
       'Settings are being applied on the instance — chat history may stay empty for a few minutes.',
-    disconnectAction: 'Disconnect',
   },
   app: {
     loading: 'Loading…',
@@ -59,7 +58,6 @@ export const i18n = {
       inputLabel: 'Message text',
       placeholder: 'Message',
       sendAction: 'Send',
-      offlineTooltip: 'You are offline. Reconnect to send messages.',
     },
   },
   sessionSettings: {
@@ -68,6 +66,9 @@ export const i18n = {
     instanceIdLabel: 'Instance ID',
     statusLabel: 'Connection',
     disconnectAction: 'Disconnect',
+    errors: {
+      notConnected: 'You are not connected to an instance.',
+    },
   },
   newChat: {
     title: 'New chat',
@@ -77,7 +78,6 @@ export const i18n = {
     cancelAction: 'Cancel',
     limitToast: 'Chat could not be created: the instance plan limit may be reached.',
     errors: {
-      emptyChatId: 'Enter the full chatId',
       notConnected: 'You are not connected to an instance.',
       resolveFailed: 'Could not resolve this contact. Check the details and try again.',
       statusError: 'The request failed. Check the connection and try again.',

@@ -1,5 +1,6 @@
 export { type Chat, type ChatType, mapChatListItem, mapContactInfo } from './chat'
 export {
+  escalatesDeliveryStatus,
   type Message,
   type MessageDeliveryStatus,
   type MessageDirection,

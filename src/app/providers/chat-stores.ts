@@ -29,12 +29,12 @@ const applyEngineEvent = (event: NotificationEngineEvent): void => {
     if (!applied) {
       return
     }
-    const chats = useChatsStore.getState()
-    chats.applyNewMessage({
+    useChatsStore.getState().applyNewMessage({
       message: event.message,
       fallbackName: event.chatFallback?.name ?? null,
     })
-    if (chats.activeChatId !== event.message.chatId && event.message.direction === 'incoming') {
+    const { activeChatId } = useChatsStore.getState()
+    if (activeChatId !== event.message.chatId && event.message.direction === 'incoming') {
       showBackgroundMessageToast(event.message.chatId, event.message.text)
     }
     return

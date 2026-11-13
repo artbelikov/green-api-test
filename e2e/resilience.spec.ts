@@ -48,7 +48,9 @@ test('a session-invalidating gateway answer disconnects back to the connect scre
   await expect(page.getByRole('heading', { level: 1, name: i18n.connect.heading })).toBeVisible({
     timeout: 30_000,
   })
-  await expect(page.getByRole('button', { name: i18n.session.disconnectAction })).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: i18n.sessionSettings.disconnectAction }),
+  ).toHaveCount(0)
 })
 
 test('unrecognized webhook envelopes are skipped without breaking the stream', async ({ page }) => {

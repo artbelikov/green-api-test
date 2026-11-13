@@ -158,6 +158,26 @@ describe('ConversationPane', () => {
     expect(screen.getByText('09:00')).toBeInTheDocument()
   })
 
+  it('re-labels day dividers when midnight passes without new messages', () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date(2026, 10, 13, 23, 30))
+      seedMessages([message('m1', new Date(2026, 10, 13, 10, 0))])
+
+      renderPane()
+      expect(screen.getByText(i18n.messenger.conversation.date.today)).toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(65 * 60_000)
+      })
+
+      expect(screen.queryByText(i18n.messenger.conversation.date.today)).not.toBeInTheDocument()
+      expect(screen.getByText(i18n.messenger.conversation.date.yesterday)).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('shows the jump-to-latest pill only when scrolled away from the bottom', () => {
     seedMessages([message('m1', new Date(2026, 10, 13, 9, 0))])
 

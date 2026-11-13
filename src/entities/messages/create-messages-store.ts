@@ -5,12 +5,16 @@ import type {
   GreenApiCredentials,
   GreenApiHistoryItem,
   Message,
-  MessageDeliveryStatus,
   MessageNotificationEvent,
   StatusNotificationEvent,
 } from '@/shared/api/greenapi'
-import { mapHistoryMessage } from '@/shared/api/greenapi'
-import { type KeyValueStore, readJson, writeJson } from '@/shared/lib/storage'
+import { escalatesDeliveryStatus, mapHistoryMessage } from '@/shared/api/greenapi'
+import {
+  createPersistThrottle,
+  type KeyValueStore,
+  readJson,
+  writeJson,
+} from '@/shared/lib/storage'
 import type { HistoryPhase, SendFailure } from './types'
 
 const MESSAGES_STORAGE_KEY = 'green-api-messenger:messages:v1'
@@ -45,23 +49,8 @@ export type MessagesState = {
   clear(): void
 }
 
-const STATUS_RANK: Readonly<Record<string, number>> = {
-  pending: 0,
-  sent: 1,
-  delivered: 2,
-  read: 3,
-}
-
 const compareMessages = (a: Message, b: Message): number =>
   a.timestamp - b.timestamp || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-
-const rankOf = (status: MessageDeliveryStatus | null): number =>
-  status === null ? 0 : (STATUS_RANK[status] ?? 0)
-
-const canEscalate = (
-  current: MessageDeliveryStatus | null,
-  next: MessageDeliveryStatus,
-): boolean => (next === 'failed' ? true : rankOf(next) > rankOf(current))
 
 const mergeMessages = (
   existing: readonly Message[],
@@ -159,7 +148,9 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
   const historyLoads = new Map<string, Promise<HistoryPhase>>()
 
   return create<MessagesState>()((set, get) => {
-    const persist = (): void => {
+    let generation = 0
+
+    const persistThrottle = createPersistThrottle(() => {
       const { byChat, history } = get()
       const persistedChats: Record<string, readonly Message[]> = {}
       for (const [chatId, messages] of Object.entries(byChat)) {
@@ -176,12 +167,12 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
         chats: persistedChats,
         history: persistedHistory,
       })
-    }
+    })
 
     const commitChat = (chatId: string, messages: readonly Message[]): void => {
       const { byChat } = get()
       set({ byChat: { ...byChat, [chatId]: messages.slice(-deps.capacityPerChat) } })
-      persist()
+      persistThrottle.schedule()
     }
 
     return {
@@ -240,7 +231,7 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
             ),
           },
         })
-        persist()
+        persistThrottle.schedule()
       },
 
       dropMessage(chatId, messageId) {
@@ -256,7 +247,7 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
           byChat: { ...byChat, [chatId]: next },
           failedSend: failureMatches ? null : failedSend,
         })
-        persist()
+        persistThrottle.schedule()
       },
 
       applyMessageEvent(event) {
@@ -298,7 +289,7 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
         if (current === undefined || current.direction !== 'outgoing') {
           return false
         }
-        if (!canEscalate(current.status, event.status)) {
+        if (!escalatesDeliveryStatus(current.status, event.status)) {
           return false
         }
         const next = [...messages]
@@ -316,6 +307,7 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
           return Promise.resolve('ready')
         }
         const load = (async (): Promise<HistoryPhase> => {
+          const startedGeneration = generation
           const { history } = get()
           set({ history: { ...history, [chatId]: 'loading' } })
           try {
@@ -323,6 +315,9 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
               chatId,
               count: deps.capacityPerChat,
             })
+            if (generation !== startedGeneration) {
+              return 'failed'
+            }
             const mapped: Message[] = []
             for (const item of items) {
               const message = mapHistoryMessage(item)
@@ -339,9 +334,10 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
                   : { ...byChat, [chatId]: merged.slice(-deps.capacityPerChat) },
               history: { ...get().history, [chatId]: 'ready' },
             })
-            persist()
+            persistThrottle.schedule()
             return 'ready'
-          } catch {
+          } catch (error) {
+            console.warn('[history] chat history request failed', error)
             set({ history: { ...get().history, [chatId]: 'failed' } })
             return 'failed'
           } finally {
@@ -353,7 +349,9 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
       },
 
       clear() {
+        generation += 1
         historyLoads.clear()
+        persistThrottle.cancel()
         deps.storage.remove(MESSAGES_STORAGE_KEY)
         set({ byChat: {}, history: {}, failedSend: null })
       },

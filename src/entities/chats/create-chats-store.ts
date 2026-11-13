@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import type { Chat, Message } from '@/shared/api/greenapi'
-import { type KeyValueStore, readJson, writeJson } from '@/shared/lib/storage'
+import { escalatesDeliveryStatus } from '@/shared/api/greenapi'
+import {
+  createPersistThrottle,
+  type KeyValueStore,
+  readJson,
+  writeJson,
+} from '@/shared/lib/storage'
 import type {
   ChatLastMessagePreview,
   ChatMessagePreviewInput,
@@ -27,15 +33,6 @@ export type ChatsState = {
 }
 
 const CHAT_TYPES: ReadonlySet<string> = new Set(['private', 'group', 'channel', 'unknown'])
-
-const STATUS_RANK: Readonly<Record<string, number>> = {
-  pending: 0,
-  sent: 1,
-  delivered: 2,
-  read: 3,
-}
-
-const rankOf = (status: string | null): number => (status === null ? 0 : (STATUS_RANK[status] ?? 0))
 
 const previewOf = (message: Message): ChatLastMessagePreview => ({
   id: message.id,
@@ -123,14 +120,14 @@ export function createChatsStore(deps: ChatsStoreDeps) {
   const persistedSummaries = loadPersistedSummaries(deps.storage)
 
   return create<ChatsState>()((set, get) => {
-    const persist = (summaries: readonly ChatSummary[]): void => {
-      writeJson(deps.storage, CHATS_STORAGE_KEY, { version: 1, chats: summaries })
-    }
+    const persistThrottle = createPersistThrottle(() => {
+      writeJson(deps.storage, CHATS_STORAGE_KEY, { version: 1, chats: get().summaries })
+    })
 
     const commit = (summaries: readonly ChatSummary[]): void => {
       const next = sortSummaries(summaries)
-      persist(next)
       set({ summaries: next })
+      persistThrottle.schedule()
     }
 
     return {
@@ -170,6 +167,13 @@ export function createChatsStore(deps: ChatsStoreDeps) {
       applyNewMessage({ message, fallbackName, markUnread = true }) {
         const { summaries, activeChatId } = get()
         const existing = summaries.find((summary) => summary.id === message.chatId)
+        if (
+          existing !== undefined &&
+          existing.lastMessage !== null &&
+          message.timestamp < existing.lastMessage.timestamp
+        ) {
+          return
+        }
         const unreadDelta =
           markUnread && message.direction === 'incoming' && activeChatId !== message.chatId ? 1 : 0
         const next: ChatSummary =
@@ -201,7 +205,7 @@ export function createChatsStore(deps: ChatsStoreDeps) {
         if (target === undefined || target.lastMessage === null || currentStatus === status) {
           return
         }
-        if (status !== 'failed' && rankOf(status) <= rankOf(currentStatus)) {
+        if (!escalatesDeliveryStatus(currentStatus, status)) {
           return
         }
         const updated: ChatSummary = {
@@ -223,9 +227,11 @@ export function createChatsStore(deps: ChatsStoreDeps) {
         )
         const changedUnread = next.some((summary, index) => summary !== summaries[index])
         if (changedUnread) {
-          persist(next)
+          set({ activeChatId: chatId, summaries: next })
+          persistThrottle.schedule()
+          return
         }
-        set({ activeChatId: chatId, summaries: changedUnread ? next : summaries })
+        set({ activeChatId: chatId, summaries })
       },
 
       closeChat() {
@@ -233,6 +239,7 @@ export function createChatsStore(deps: ChatsStoreDeps) {
       },
 
       clear() {
+        persistThrottle.cancel()
         deps.storage.remove(CHATS_STORAGE_KEY)
         set({ summaries: [], activeChatId: null })
       },

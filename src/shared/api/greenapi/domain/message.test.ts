@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { GreenApiHistoryItem, GreenApiNotificationEnvelope } from '../types'
-import { mapHistoryMessage, mapNotification, notificationChatFallback } from './message'
+import {
+  deliveryStatusRank,
+  escalatesDeliveryStatus,
+  mapHistoryMessage,
+  mapNotification,
+  notificationChatFallback,
+} from './message'
 
 const INCOMING_WEBHOOK_FIXTURE: GreenApiNotificationEnvelope = {
   typeWebhook: 'incomingMessageReceived',
@@ -248,5 +254,28 @@ describe('notificationChatFallback', () => {
       }),
     ).toEqual({ chatId: '79161234567@c.us', name: 'Иван' })
     expect(notificationChatFallback({ typeWebhook: 'incomingMessageReceived' })).toBeNull()
+  })
+})
+
+describe('delivery status ranking', () => {
+  it('ranks the delivery ladder with null as the lowest phase', () => {
+    expect(deliveryStatusRank(null)).toBe(0)
+    expect(deliveryStatusRank('failed')).toBe(0)
+    expect(deliveryStatusRank('pending')).toBe(0)
+    expect(deliveryStatusRank('sent')).toBe(1)
+    expect(deliveryStatusRank('delivered')).toBe(2)
+    expect(deliveryStatusRank('read')).toBe(3)
+  })
+
+  it('escalates strictly along the ladder and lets failure override everything', () => {
+    expect(escalatesDeliveryStatus(null, 'pending')).toBe(false)
+    expect(escalatesDeliveryStatus(null, 'sent')).toBe(true)
+    expect(escalatesDeliveryStatus('pending', 'read')).toBe(true)
+    expect(escalatesDeliveryStatus('delivered', 'sent')).toBe(false)
+    expect(escalatesDeliveryStatus('read', 'delivered')).toBe(false)
+    expect(escalatesDeliveryStatus('failed', 'sent')).toBe(true)
+    expect(escalatesDeliveryStatus('read', 'failed')).toBe(true)
+    expect(escalatesDeliveryStatus(null, 'failed')).toBe(true)
+    expect(escalatesDeliveryStatus('read', 'read')).toBe(false)
   })
 })

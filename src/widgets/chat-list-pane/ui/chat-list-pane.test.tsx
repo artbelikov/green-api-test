@@ -1,8 +1,9 @@
 import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
 import type { GreenApiCredentials } from '@/shared/api/greenapi'
@@ -53,6 +54,9 @@ const DEMO_CHATS: MockChat[] = [
 ]
 
 const FIND_OPTIONS = { timeout: 3000 }
+
+const endpointOf = (method: string): string =>
+  `${CREDENTIALS.apiUrl}/waInstance${CREDENTIALS.idInstance}/${method}/${CREDENTIALS.apiTokenInstance}`
 
 describe('ChatListPane', () => {
   it('hydrates rows from getChats and renders name, preview, and unread', async () => {
@@ -143,5 +147,47 @@ describe('ChatListPane', () => {
     fireEvent.click(screen.getByRole('button', { name: i18n.messenger.list.newChatAction }))
 
     expect(await screen.findByText(i18n.newChat.title, {}, FIND_OPTIONS)).toBeInTheDocument()
+  })
+
+  it('skips the preview sweep application when the session disconnects mid-await', async () => {
+    let releaseHistory: () => void = () => undefined
+    const historyGate = new Promise<void>((resolve) => {
+      releaseHistory = resolve
+    })
+    let historyResponses = 0
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    mockGateway.chats.push(DEMO_CHATS[0] as MockChat)
+    server.use(
+      http.post(endpointOf('getChatHistory'), async () => {
+        await historyGate
+        historyResponses += 1
+        return HttpResponse.json([
+          {
+            type: 'incoming',
+            idMessage: 'hist-ghost',
+            timestamp: Math.floor(Date.now() / 1000),
+            typeMessage: 'textMessage',
+            chatId: '79991234567',
+            textMessage: 'Late arrival after disconnect',
+          },
+        ])
+      }),
+    )
+
+    renderPane()
+    expect(await screen.findByText('Demo Contact', {}, FIND_OPTIONS)).toBeInTheDocument()
+    const sweepChatId = useChatsStore.getState().summaries[0]?.id
+    expect(sweepChatId).toBe('79991234567')
+
+    useSessionStore.getState().disconnect()
+    releaseHistory()
+
+    await vi.waitFor(
+      () => {
+        expect(historyResponses).toBe(1)
+      },
+      { timeout: 5_000 },
+    )
+    expect(useChatsStore.getState().summaries[0]?.lastMessage).toBeNull()
   })
 })

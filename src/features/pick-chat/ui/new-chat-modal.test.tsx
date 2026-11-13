@@ -122,4 +122,29 @@ describe('NewChatModal', () => {
     expect(await screen.findByText(i18n.newChat.errors.resolveFailed)).toBeInTheDocument()
     expect(useChatsStore.getState().summaries).toHaveLength(0)
   })
+
+  it('rejects a bare-word draft that the gateway echoes instead of creating a phantom chat', async () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    renderModal()
+    typeTarget('durov')
+    submitForm()
+
+    expect(await screen.findByText(i18n.newChat.errors.resolveFailed)).toBeInTheDocument()
+    expect(useChatsStore.getState().summaries).toHaveLength(0)
+  })
+
+  it('creates a chat from a bare-digit draft that fails phone normalization', async () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    const onClose = vi.fn()
+    renderModal(onClose)
+    typeTarget('777000111')
+    submitForm()
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(useChatsStore.getState().summaries[0]?.id).toBe('777000111')
+    })
+  })
 })

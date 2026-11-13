@@ -1,4 +1,9 @@
-import { ApiError, type GreenApiCredentials, greenApiRequest } from './http-client'
+import {
+  ApiError,
+  credentialsFingerprint,
+  type GreenApiCredentials,
+  greenApiRequest,
+} from './http-client'
 import { GREEN_API_RATE_LIMITS, RateQueue } from './rate-queue'
 import type {
   GreenApiAvatar,
@@ -35,6 +40,9 @@ const rateQueue = new RateQueue(GREEN_API_RATE_LIMITS)
 
 const DEFAULT_RECEIVE_TIMEOUT_MARGIN_SECONDS = 5
 
+const coalesceKey = (credentials: GreenApiCredentials, ...parts: readonly string[]): string =>
+  [credentialsFingerprint(credentials), ...parts].join('::')
+
 export async function sendMessage(
   credentials: GreenApiCredentials,
   args: SendMessageArgs,
@@ -70,7 +78,7 @@ export async function getChatHistory(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
-    `${args.chatId}:${args.count}`,
+    coalesceKey(credentials, `${args.chatId}:${args.count}`),
   )
 }
 
@@ -87,7 +95,7 @@ export async function getChats(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
-    'all',
+    coalesceKey(credentials, 'all'),
   )
 }
 
@@ -104,7 +112,7 @@ export async function getContacts(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
-    'all',
+    coalesceKey(credentials, 'all'),
   )
 }
 
@@ -122,7 +130,7 @@ export async function getContactInfo(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
-    chatId,
+    coalesceKey(credentials, chatId),
   )
 }
 
@@ -140,7 +148,7 @@ export async function getAvatar(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
-    chatId,
+    coalesceKey(credentials, chatId),
   )
 }
 
@@ -157,7 +165,7 @@ export async function getStateInstance(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
-    'state',
+    coalesceKey(credentials, 'state'),
   )
 }
 
@@ -174,7 +182,7 @@ export async function getSettings(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
-    'settings',
+    coalesceKey(credentials, 'settings'),
   )
 }
 
@@ -254,6 +262,6 @@ export async function readChat(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
-    chatId,
+    coalesceKey(credentials, chatId),
   )
 }

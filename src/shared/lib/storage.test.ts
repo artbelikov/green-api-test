@@ -1,5 +1,11 @@
-import { describe, expect, it, vi } from 'vitest'
-import { type KeyValueStore, localStorageStore, readJson, writeJson } from './storage'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  createPersistThrottle,
+  type KeyValueStore,
+  localStorageStore,
+  readJson,
+  writeJson,
+} from './storage'
 
 type Payload = {
   value: number
@@ -60,5 +66,62 @@ describe('readJson/writeJson', () => {
     expect(readJson<Payload>(localStorageStore, 'test:missing')).toBeNull()
     localStorageStore.write('test:json', 'not-json{')
     expect(readJson<Payload>(localStorageStore, 'test:json')).toBeNull()
+  })
+})
+
+describe('createPersistThrottle', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('runs the write once at the trailing edge of the window', () => {
+    const write = vi.fn()
+    const throttle = createPersistThrottle(write)
+
+    vi.useFakeTimers()
+    throttle.schedule()
+    expect(write).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(499)
+    expect(write).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    expect(write).toHaveBeenCalledTimes(1)
+
+    throttle.schedule()
+    vi.advanceTimersByTime(500)
+    expect(write).toHaveBeenCalledTimes(2)
+  })
+
+  it('coalesces repeated schedules within one window into a single write', () => {
+    const write = vi.fn()
+    const throttle = createPersistThrottle(write)
+
+    vi.useFakeTimers()
+    throttle.schedule()
+    vi.advanceTimersByTime(200)
+    throttle.schedule()
+    vi.advanceTimersByTime(200)
+    throttle.schedule()
+    vi.advanceTimersByTime(200)
+
+    expect(write).toHaveBeenCalledTimes(1)
+  })
+
+  it('cancels a pending write and flushes on beforeunload', () => {
+    const write = vi.fn()
+    const throttle = createPersistThrottle(write)
+
+    vi.useFakeTimers()
+    throttle.schedule()
+    throttle.cancel()
+    vi.advanceTimersByTime(1_000)
+    expect(write).not.toHaveBeenCalled()
+
+    throttle.schedule()
+    expect(write).not.toHaveBeenCalled()
+
+    window.dispatchEvent(new Event('beforeunload'))
+    expect(write).toHaveBeenCalledTimes(1)
   })
 })

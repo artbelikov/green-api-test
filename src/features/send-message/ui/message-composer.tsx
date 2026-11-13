@@ -2,7 +2,6 @@ import { ActionIcon } from '@mantine/core'
 import { IconSend } from '@tabler/icons-react'
 import type { KeyboardEvent } from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { useSessionStore } from '@/entities/session'
 import { i18n } from '@/shared/config'
 import { MAX_SEND_TEXT_LENGTH, validateSendText } from '../lib/validate-send-text'
 import { sendChatText } from '../send-chat-text'
@@ -13,12 +12,10 @@ export type MessageComposerProps = {
 }
 
 export function MessageComposer({ chatId }: MessageComposerProps) {
-  const status = useSessionStore((state) => state.status)
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const emptyHeightRef = useRef<number | null>(null)
   const hasText = value.trim().length > 0
-  const offline = status !== 'connected'
 
   const autosize = (): void => {
     const element = textareaRef.current
@@ -78,8 +75,6 @@ export function MessageComposer({ chatId }: MessageComposerProps) {
           color="brand"
           radius="xl"
           size="md"
-          disabled={offline}
-          title={offline ? i18n.messenger.composer.offlineTooltip : undefined}
           aria-label={i18n.messenger.composer.sendAction}
         >
           <IconSend size={20} aria-hidden />

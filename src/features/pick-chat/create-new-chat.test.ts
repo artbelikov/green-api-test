@@ -129,4 +129,46 @@ describe('createNewChat', () => {
       code: 'rateLimited',
     })
   })
+
+  it('rejects a bare-word nickname draft when the gateway echoes it back', async () => {
+    connectSession()
+
+    const result = await createNewChat({ phone: '', chatId: 'durov' })
+
+    expect(result).toEqual({ ok: false, code: 'resolveFailed' })
+    expect(useChatsStore.getState().summaries).toHaveLength(0)
+  })
+
+  it('resolves an @-prefixed nickname that the gateway maps to a distinct chatId', async () => {
+    connectSession()
+
+    const result = await createNewChat({ phone: '', chatId: '@demo_contact' })
+
+    expect(result).toEqual({ ok: true, chatId: '79991234567' })
+    expect(useChatsStore.getState().summaries[0]).toMatchObject({
+      id: '79991234567',
+      name: 'Demo Contact',
+    })
+  })
+
+  it('routes a bare-digit draft that fails phone normalization to the verbatim chatId path', async () => {
+    connectSession()
+
+    const result = await createNewChat({ phone: '777000111', chatId: '' })
+
+    expect(result).toEqual({ ok: true, chatId: '777000111' })
+    expect(useChatsStore.getState().summaries[0]).toMatchObject({
+      id: '777000111',
+      name: '777000111',
+    })
+  })
+
+  it('keeps region-restricted drafts on the phone path error', async () => {
+    connectSession()
+
+    const result = await createNewChat({ phone: '375291234567', chatId: '' })
+
+    expect(result).toEqual({ ok: false, code: 'unsupportedRegion' })
+    expect(useChatsStore.getState().summaries).toHaveLength(0)
+  })
 })
