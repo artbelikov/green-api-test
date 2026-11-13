@@ -92,7 +92,7 @@ The app is a pure static SPA (GREEN-API sends `Access-Control-Allow-Origin: *` �
 
 | File                | Role                                                                                                                                                                                                                                                                                                 |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Dockerfile`        | Multi-stage build: `pnpm install --frozen-lockfile` + `pnpm build` on `node:22-alpine` (corepack pnpm per `packageManager`), then only `dist/` is copied into `nginx:alpine`, so the runtime stays a plain static host with a Docker `HEALTHCHECK` on `/healthz`.                                    |
+| `Dockerfile`        | Multi-stage build: `pnpm install --frozen-lockfile --ignore-scripts` + `pnpm build` on `node:22-alpine` (corepack pnpm per `packageManager`), then only `dist/` is copied into `nginx:alpine`, so the runtime stays a plain static host with a Docker `HEALTHCHECK` on `/healthz`.                   |
 | `nginx.conf`        | gzip · immutable 1-year cache for hashed `/assets/*` · `index.html` never cached (SPA entry is always revalidated) · SPA fallback via `try_files` so every route is refresh-safe · `X-Content-Type-Options: nosniff` + `Referrer-Policy: no-referrer` on every response · `GET /healthz` → `200 ok`. |
 | `public/robots.txt` | Disallows all crawlers (personal test-task app).                                                                                                                                                                                                                                                     |
 
@@ -103,7 +103,7 @@ No build-time or runtime environment variables are required — credentials are 
 1. Push this repository to GitHub.
 2. In [Railway](https://railway.com) → **New project → Deploy from GitHub repo** → pick the repo.
 3. Railway auto-detects and builds the root `Dockerfile`; every push to `main` redeploys.
-4. One-time: Service → **Settings → Deploy → Healthcheck** → path `/healthz`, timeout `100` (seconds) — Railway waits for `/healthz` to answer `2xx` before switching traffic to a new deployment (zero-downtime gate; the Docker `HEALTHCHECK` in the image is a separate, deploy-agnostic thing).
+4. One-time: Service → **Variables** → `PORT` = `80` (must match the service's target port — Railway probes the `PORT` variable at deploy time; omitting it fails every deployment with `service unavailable` even though the container serves the path) and Service → **Settings → Deploy → Healthcheck** → path `/healthz`, timeout `100` (seconds) — Railway waits for `/healthz` to answer `2xx` before switching traffic to a new deployment (zero-downtime gate; the Docker `HEALTHCHECK` in the image is a separate, deploy-agnostic thing).
 5. Service → **Settings → Networking → Generate domain** to publish the container port publicly.
 
 ### Deploy — CLI (`railway up`)
@@ -116,7 +116,7 @@ railway up
 railway domain
 ```
 
-Then point the same **Settings → Deploy → Healthcheck** at `/healthz` (timeout `100`) as in the GitHub-connected flow.
+Then point the same **Settings → Deploy → Healthcheck** at `/healthz` (timeout `100`) and add the `PORT=80` variable as in the GitHub-connected flow.
 
 **Deployed URL:** <https://green-api-test-production-c7007a9c.up.railway.app/> — live-run checklist verified (2026-11-13): `/healthz` 200, deep-link refresh 200 (SPA fallback), hashed assets 200, `robots.txt` served.
 
@@ -148,11 +148,12 @@ Fastest routes to try the app:
 
 Captured in mock mode (`?mock=1`) — never with real credentials or chats:
 
-| Screen                   |                                                 |
-| ------------------------ | ----------------------------------------------- |
-| Connect screen           | ![Connect screen](docs/screenshots/connect.png) |
-| Chat list + conversation | ![Messenger](docs/screenshots/messenger.png)    |
-| Mobile single-pane       | ![Mobile](docs/screenshots/mobile.png)          |
+| Screen                                                                                                                                                                                                   |                                                 |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Connect screen                                                                                                                                                                                           | ![Connect screen](docs/screenshots/connect.png) |
+| Chat list + conversation                                                                                                                                                                                 | ![Messenger](docs/screenshots/messenger.png)    |
+| Mobile single-pane                                                                                                                                                                                       | ![Mobile](docs/screenshots/mobile.png)          |
+| Demo video (~70 s, recorded in mock mode): connect → new chat by phone → send → scripted reply arrives live → ticks escalate → background message raises a badge and a toast → session survives a reload | [demo.webm](docs/screenshots/demo.webm)         |
 
 ---
 
