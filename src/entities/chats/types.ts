@@ -27,6 +27,7 @@ export interface ChatSummary {
 export interface ChatMessagePreviewInput {
   readonly message: Message
   readonly fallbackName: string | null
+  readonly markUnread?: boolean
 }
 
 export interface ChatStatusUpdateInput {

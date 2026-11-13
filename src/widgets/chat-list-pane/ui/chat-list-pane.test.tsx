@@ -65,6 +65,27 @@ describe('ChatListPane', () => {
     expect(screen.getByText('Another Friend')).toBeInTheDocument()
   })
 
+  it('backfills last-message previews in the background without unread inflation', async () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    mockGateway.chats.push(DEMO_CHATS[0] as MockChat)
+    mockGateway.messages.push({
+      idMessage: 'hist-1',
+      chatId: '79991234567',
+      direction: 'incoming',
+      text: 'Old message from history',
+      timestamp: Date.now() - 60_000,
+    })
+
+    renderPane()
+
+    expect(
+      await screen.findByText('Old message from history', {}, FIND_OPTIONS),
+    ).toBeInTheDocument()
+    const summary = useChatsStore.getState().summaries.find((entry) => entry.id === '79991234567')
+    expect(summary?.lastMessage?.id).toBe('hist-1')
+    expect(summary?.unread).toBe(0)
+  })
+
   it('shows the empty state with the new-chat action when no chats exist', async () => {
     useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
 

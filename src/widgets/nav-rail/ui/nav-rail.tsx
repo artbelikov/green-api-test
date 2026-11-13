@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { i18n } from '@/shared/config'
 import classes from './nav-rail.module.css'
 
@@ -45,32 +45,37 @@ export interface NavRailProps {
   readonly onSelect: (section: NavRailSection) => void
 }
 
-const SECTIONS: ReadonlyArray<{ readonly id: NavRailSection; readonly icon: ReactNode }> = [
-  { id: 'all', icon: <ChatsIcon /> },
-  { id: 'contacts', icon: <ContactsIcon /> },
-  { id: 'settings', icon: <SettingsIcon /> },
-]
+export interface NavRailProps {
+  readonly active: NavRailSection
+  readonly onSelect: (section: NavRailSection) => void
+}
 
 export function NavRail({ active, onSelect }: NavRailProps) {
+  const renderItem = (section: NavRailSection, icon: ReactNode): JSX.Element => {
+    const isActive = section === active
+    return (
+      <button
+        key={section}
+        type="button"
+        className={classes.item}
+        data-active={isActive || undefined}
+        aria-current={isActive ? 'page' : undefined}
+        aria-label={i18n.messenger.navRail[section]}
+        onClick={() => onSelect(section)}
+      >
+        {icon}
+        <span className={classes.label}>{i18n.messenger.navRail[section]}</span>
+      </button>
+    )
+  }
+
   return (
     <nav className={classes.rail} aria-label={i18n.messenger.navRail.label}>
-      {SECTIONS.map((section) => {
-        const isActive = section.id === active
-        return (
-          <button
-            key={section.id}
-            type="button"
-            className={classes.item}
-            data-active={isActive || undefined}
-            aria-current={isActive ? 'page' : undefined}
-            aria-label={i18n.messenger.navRail[section.id]}
-            onClick={() => onSelect(section.id)}
-          >
-            {section.icon}
-            <span className={classes.label}>{i18n.messenger.navRail[section.id]}</span>
-          </button>
-        )
-      })}
+      <div className={classes.group}>
+        {renderItem('all', <ChatsIcon />)}
+        {renderItem('contacts', <ContactsIcon />)}
+      </div>
+      <div className={classes.group}>{renderItem('settings', <SettingsIcon />)}</div>
     </nav>
   )
 }

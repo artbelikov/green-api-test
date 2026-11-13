@@ -130,6 +130,19 @@ describe('createChatsStore', () => {
     expect(store.getState().summaries[0]?.lastMessage?.direction).toBe('outgoing')
   })
 
+  it('does not count unread when the preview is backfilled as a known-read history item', () => {
+    const { storage, now } = memory()
+    const store = createChatsStore({ storage, now })
+
+    store.getState().applyNewMessage({
+      message: incoming('m1', '111', 'from history sweep', now()),
+      fallbackName: null,
+      markUnread: false,
+    })
+    expect(store.getState().summaries[0]?.unread).toBe(0)
+    expect(store.getState().summaries[0]?.lastMessage?.text).toBe('from history sweep')
+  })
+
   it('does not count unread while the chat is open', () => {
     const { storage, now } = memory()
     const store = createChatsStore({ storage, now })

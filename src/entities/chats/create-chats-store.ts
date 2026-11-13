@@ -167,11 +167,11 @@ export function createChatsStore(deps: ChatsStoreDeps) {
         commit([...byId.values()])
       },
 
-      applyNewMessage({ message, fallbackName }) {
+      applyNewMessage({ message, fallbackName, markUnread = true }) {
         const { summaries, activeChatId } = get()
         const existing = summaries.find((summary) => summary.id === message.chatId)
         const unreadDelta =
-          message.direction === 'incoming' && activeChatId !== message.chatId ? 1 : 0
+          markUnread && message.direction === 'incoming' && activeChatId !== message.chatId ? 1 : 0
         const next: ChatSummary =
           existing === undefined
             ? {
