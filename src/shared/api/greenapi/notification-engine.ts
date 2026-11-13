@@ -47,7 +47,7 @@ export interface NotificationEngineDeps {
   readonly hiddenDispatchIntervalMs?: number
 }
 
-export const NOTIFICATION_ENGINE_RECEIVE_TIMEOUT_SECONDS = 25
+export const NOTIFICATION_ENGINE_RECEIVE_TIMEOUT_SECONDS = 10
 export const NOTIFICATION_ENGINE_INITIAL_BACKOFF_MS = 1_000
 export const NOTIFICATION_ENGINE_MAX_BACKOFF_MS = 30_000
 export const NOTIFICATION_ENGINE_HIDDEN_DISPATCH_INTERVAL_MS = 1_000

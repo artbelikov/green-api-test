@@ -139,7 +139,7 @@ class ManualScheduler implements NotificationScheduler {
 
 describe('notification engine constants', () => {
   it('pins the long-poll contract values', () => {
-    expect(NOTIFICATION_ENGINE_RECEIVE_TIMEOUT_SECONDS).toBe(25)
+    expect(NOTIFICATION_ENGINE_RECEIVE_TIMEOUT_SECONDS).toBe(10)
     expect(NOTIFICATION_ENGINE_INITIAL_BACKOFF_MS).toBe(1_000)
     expect(NOTIFICATION_ENGINE_MAX_BACKOFF_MS).toBe(30_000)
     expect(NOTIFICATION_ENGINE_HIDDEN_DISPATCH_INTERVAL_MS).toBe(1_000)
@@ -689,7 +689,7 @@ afterAll(() => {
 describe('notification engine over the real facade gateway (MSW)', () => {
   const realGateway: NotificationEngineGateway = { receiveNotification, deleteNotification }
 
-  it('long-polls with receiveTimeout=25, drains the queue FIFO and acks after apply', async () => {
+  it('long-polls with the receive window, drains the queue FIFO and acks after apply', async () => {
     const queue: Array<{ receiptId: number; body: GreenApiNotificationEnvelope }> = [
       { receiptId: 11, body: incomingEnvelope('m1', 'first', '79111111111') },
       { receiptId: 12, body: incomingEnvelope('m2', 'second', '79111111111') },
@@ -738,7 +738,11 @@ describe('notification engine over the real facade gateway (MSW)', () => {
     unsubscribe()
 
     expect(receiveUrls.length).toBeGreaterThanOrEqual(3)
-    expect(receiveUrls.every((url) => url.includes('receiveTimeout=25'))).toBe(true)
+    expect(
+      receiveUrls.every((url) =>
+        url.includes(`receiveTimeout=${NOTIFICATION_ENGINE_RECEIVE_TIMEOUT_SECONDS}`),
+      ),
+    ).toBe(true)
     expect(deleteUrls).toEqual([
       `${base}/deleteNotification/${CREDENTIALS.apiTokenInstance}/11`,
       `${base}/deleteNotification/${CREDENTIALS.apiTokenInstance}/12`,
