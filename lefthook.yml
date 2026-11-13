@@ -2,7 +2,7 @@ pre-commit:
   commands:
     lint-staged:
       stage_fixed: true
-      run: pnpm exec biome check --write --staged
+      run: pnpm exec biome check --write --staged --no-errors-on-unmatched
     check-arch:
       run: pnpm check:arch
 
