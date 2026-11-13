@@ -150,6 +150,33 @@ describe('MessageComposer', () => {
     expect(useMessagesStore.getState().byChat['chat-1']).toBeUndefined()
   })
 
+  it('never shrinks the input below the measured empty height while typing', () => {
+    connectSession()
+    const scrollHeight = vi
+      .spyOn(HTMLTextAreaElement.prototype, 'scrollHeight', 'get')
+      .mockImplementation(function (this: HTMLTextAreaElement) {
+        if (this.value.length === 0) {
+          return 44
+        }
+        return this.value.includes('\n') ? 80 : 36
+      })
+    try {
+      renderComposer()
+      const node = textarea()
+
+      fireEvent.change(node, { target: { value: 'a' } })
+      expect(node.style.height).toBe('44px')
+
+      fireEvent.change(node, { target: { value: 'a\nb' } })
+      expect(node.style.height).toBe('80px')
+
+      fireEvent.change(node, { target: { value: '' } })
+      expect(node.style.height).toBe('44px')
+    } finally {
+      scrollHeight.mockRestore()
+    }
+  })
+
   it('does not send text longer than the limit', () => {
     connectSession()
     renderComposer()

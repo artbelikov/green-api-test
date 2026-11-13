@@ -16,6 +16,7 @@ export function MessageComposer({ chatId }: MessageComposerProps) {
   const status = useSessionStore((state) => state.status)
   const [value, setValue] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const emptyHeightRef = useRef<number | null>(null)
   const hasText = value.trim().length > 0
   const offline = status !== 'connected'
 
@@ -25,7 +26,10 @@ export function MessageComposer({ chatId }: MessageComposerProps) {
       return
     }
     element.style.height = 'auto'
-    element.style.height = `${element.scrollHeight}px`
+    if (emptyHeightRef.current === null && element.value.length === 0) {
+      emptyHeightRef.current = element.scrollHeight
+    }
+    element.style.height = `${Math.max(emptyHeightRef.current ?? 0, element.scrollHeight)}px`
   }
 
   useLayoutEffect(autosize)
