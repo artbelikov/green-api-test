@@ -1,4 +1,4 @@
-import type { GreenApiChatListItem, GreenApiContactInfo, GreenApiContactsItem } from '../types'
+import type { GreenApiChatListItem, GreenApiContactInfo } from '../types'
 
 export type ChatType = 'private' | 'group' | 'channel' | 'unknown'
 
@@ -38,20 +38,6 @@ export function mapChatListItem(raw: GreenApiChatListItem): Chat | null {
     type: normalizeChatType(raw.type),
     username: raw.username ?? null,
     phone: raw.phoneNumber ?? null,
-  }
-}
-
-export function mapContactItem(raw: GreenApiContactsItem): Chat | null {
-  const id = raw.newChatId ?? raw.id
-  if (id === undefined || id.length === 0) {
-    return null
-  }
-  return {
-    id,
-    name: resolveName(raw.contactName, raw.name, id),
-    type: normalizeChatType(raw.type),
-    username: null,
-    phone: null,
   }
 }
 

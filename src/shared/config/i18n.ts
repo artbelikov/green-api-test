@@ -25,7 +25,6 @@ export const i18n = {
     navRail: {
       label: 'Navigation',
       all: 'Chats',
-      contacts: 'Contacts',
       settings: 'Settings',
     },
     list: {
@@ -61,12 +60,6 @@ export const i18n = {
       sendAction: 'Send',
       offlineTooltip: 'You are offline. Reconnect to send messages.',
     },
-  },
-  contactsBook: {
-    title: 'Contacts',
-    loadFailed: 'Could not load contacts.',
-    retryAction: 'Retry',
-    empty: 'No contacts found on this instance.',
   },
   sessionSettings: {
     title: 'Settings',

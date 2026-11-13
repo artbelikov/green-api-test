@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { GreenApiChatListItem, GreenApiContactInfo, GreenApiContactsItem } from '../types'
-import { mapChatListItem, mapContactInfo, mapContactItem } from './chat'
+import type { GreenApiChatListItem, GreenApiContactInfo } from '../types'
+import { mapChatListItem, mapContactInfo } from './chat'
 
 describe('mapChatListItem', () => {
   it('maps the live Telegram getChats shape', () => {
@@ -52,29 +52,6 @@ describe('mapChatListItem', () => {
       phone: null,
     })
     expect(mapChatListItem({ name: 'No id here' })).toBeNull()
-  })
-})
-
-describe('mapContactItem', () => {
-  it('prefers the phone-book name over the raw name and honors newChatId', () => {
-    const raw: GreenApiContactsItem = {
-      id: '79876543210@c.us',
-      name: '',
-      contactName: 'Иван Царевич Работа',
-      type: 'user',
-      newChatId: '999999@lid',
-    }
-    expect(mapContactItem(raw)).toEqual({
-      id: '999999@lid',
-      name: 'Иван Царевич Работа',
-      type: 'private',
-      username: null,
-      phone: null,
-    })
-  })
-
-  it('rejects entries without an id', () => {
-    expect(mapContactItem({ name: 'Ghost' })).toBeNull()
   })
 })
 

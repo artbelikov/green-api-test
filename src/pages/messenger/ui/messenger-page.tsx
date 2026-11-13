@@ -3,7 +3,6 @@ import { useMediaQuery } from '@mantine/hooks'
 import { useState } from 'react'
 import { selectActiveChatSummary, useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
-import { ContactsModal } from '@/features/contacts-book'
 import { SettingsModal } from '@/features/session-settings'
 import { i18n } from '@/shared/config'
 import { Wallpaper } from '@/shared/ui'
@@ -22,7 +21,6 @@ export function MessengerPage() {
   const reconnecting = useSessionStore((state) => state.reconnecting)
   const { max } = useMantineTheme().other
   const [activeSection, setActiveSection] = useState<NavRailSection>('all')
-  const [contactsOpen, setContactsOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const showList = !isMobile || activeChatId === null
@@ -30,18 +28,9 @@ export function MessengerPage() {
 
   const handleSectionSelect = (section: NavRailSection): void => {
     setActiveSection(section)
-    if (section === 'contacts') {
-      setContactsOpen(true)
-      return
-    }
     if (section === 'settings') {
       setSettingsOpen(true)
     }
-  }
-
-  const handleContactsClose = (): void => {
-    setContactsOpen(false)
-    setActiveSection('all')
   }
 
   const handleSettingsClose = (): void => {
@@ -95,7 +84,6 @@ export function MessengerPage() {
           </section>
         ) : null}
       </div>
-      <ContactsModal opened={contactsOpen} onClose={handleContactsClose} />
       <SettingsModal opened={settingsOpen} onClose={handleSettingsClose} />
     </div>
   )

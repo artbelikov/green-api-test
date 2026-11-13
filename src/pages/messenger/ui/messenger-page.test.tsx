@@ -132,27 +132,6 @@ describe('MessengerPage', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('opens the contacts modal from the rail and loads contacts', async () => {
-    const user = userEvent.setup()
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
-    useChatsStore.getState().upsertChats([
-      {
-        id: 'chat-1',
-        name: 'Demo Contact',
-        type: 'unknown',
-        username: 'demo_contact',
-        phone: null,
-      },
-    ])
-
-    renderPage()
-
-    await user.click(screen.getByRole('button', { name: i18n.messenger.navRail.contacts }))
-    const dialog = await screen.findByRole('dialog', { name: i18n.contactsBook.title })
-    expect(dialog).toBeInTheDocument()
-    expect(await screen.findByText('Demo Contact')).toBeInTheDocument()
-  })
-
   it('opens the settings modal from the rail and disconnects on demand', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })

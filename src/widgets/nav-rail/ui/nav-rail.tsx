@@ -1,9 +1,9 @@
-import { IconMessageCircle, IconSettings, IconUsers } from '@tabler/icons-react'
+import { IconMessageCircle, IconSettings } from '@tabler/icons-react'
 import type { JSX, ReactNode } from 'react'
 import { i18n } from '@/shared/config'
 import classes from './nav-rail.module.css'
 
-export type NavRailSection = 'all' | 'contacts' | 'settings'
+export type NavRailSection = 'all' | 'settings'
 
 export interface NavRailProps {
   readonly active: NavRailSection
@@ -33,7 +33,6 @@ export function NavRail({ active, onSelect }: NavRailProps) {
     <nav className={classes.rail} aria-label={i18n.messenger.navRail.label}>
       <div className={classes.group}>
         {renderItem('all', <IconMessageCircle className={classes.icon} aria-hidden />)}
-        {renderItem('contacts', <IconUsers className={classes.icon} aria-hidden />)}
       </div>
       <div className={classes.group}>
         {renderItem('settings', <IconSettings className={classes.icon} aria-hidden />)}

@@ -1,4 +1,4 @@
-export { type Chat, type ChatType, mapChatListItem, mapContactInfo, mapContactItem } from './chat'
+export { type Chat, type ChatType, mapChatListItem, mapContactInfo } from './chat'
 export {
   type Message,
   type MessageDeliveryStatus,
