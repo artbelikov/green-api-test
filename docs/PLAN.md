@@ -155,7 +155,7 @@ CI (GitHub Actions): lint → typecheck → unit+component (coverage) → build 
 ## 9. Deployment (Railway.com)
 
 - Dockerfile multi-stage: pnpm fetch+build → nginx alpine; `nginx.conf`: gzip, `Cache-Control` for hashed assets, index no-cache, SPA fallback, `X-Content-Type-Options`, `Referrer-Policy: no-referrer`, `/healthz` 200.
-- Env at build: none required for runtime (credentials are user-entered); optional `VITE_GREENAPI_*` prefill for dev only. `robots.txt` disallow.
+- Env at build: none required for runtime — credentials are entered per session on the connect screen (no `VITE_GREENAPI_*` env vars exist; the T0-era optional prefill was removed as dead surface). `robots.txt` disallow.
 - README: one-click GitHub-flow instructions + `railway up` alternative; production URL documented.
 
 ## 10. Risks

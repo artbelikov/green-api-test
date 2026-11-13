@@ -17,7 +17,7 @@ Scope kept deliberately minimal per the task: **text-only messaging** — connec
 
 ```bash
 pnpm install
-cp .env.example .env   # optional: pre-fill credentials for local dev (gitignored)
+cp .env.example .env   # optional: pin VITE_API_MODE locally (gitignored)
 pnpm dev
 ```
 
@@ -48,14 +48,11 @@ Every git operation is guarded by [lefthook](https://github.com/evilmartians/lef
 
 ## Environment variables
 
-| Variable                | Meaning                                                                   |
-| ----------------------- | ------------------------------------------------------------------------- |
-| `VITE_API_MODE`         | `live` (default, real GREEN-API calls) or `mock` (MSW fake gateway)       |
-| `VITE_GREENAPI_API_URL` | Optional prefill of the gateway URL (default `https://api.green-api.com`) |
-| `VITE_GREENAPI_ID`      | Optional prefill of `idInstance`                                          |
-| `VITE_GREENAPI_TOKEN`   | Optional prefill of `apiTokenInstance` — never commit real values         |
+| Variable        | Meaning                                                             |
+| --------------- | ------------------------------------------------------------------- |
+| `VITE_API_MODE` | `live` (default, real GREEN-API calls) or `mock` (MSW fake gateway) |
 
-Credentials entered in the UI are stored only in the browser's `localStorage`; the repo never contains real instance data (`followup.txt`, `taskdesc.txt`, `redirect.pdf` stay gitignored).
+That is the only build-time variable. GREEN-API credentials are never application-wide configuration: there are no `VITE_GREENAPI_*` env vars — `idInstance`/`apiTokenInstance` are entered on the connect screen per session, validated live, and stored only in the browser's `localStorage` (cleared by _Disconnect_). The repo never contains real instance data (`followup.txt`, `taskdesc.txt`, `redirect.pdf` stay gitignored).
 
 ## Project structure (Feature Sliced Design)
 
