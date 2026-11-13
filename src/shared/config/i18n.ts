@@ -46,7 +46,15 @@ export const i18n = {
       emptyHistory: 'No messages yet',
       historyFailed: 'Could not load messages.',
       retryHistory: 'Retry',
+      retryFailed: 'Retry sending',
       date: { today: 'Today', yesterday: 'Yesterday' },
+    },
+    composer: {
+      inputLabel: 'Message text',
+      placeholder: 'Message',
+      sendAction: 'Send',
+      micTitle: 'Voice messages are not supported',
+      offlineTooltip: 'You are offline. Reconnect to send messages.',
     },
   },
   newChat: {

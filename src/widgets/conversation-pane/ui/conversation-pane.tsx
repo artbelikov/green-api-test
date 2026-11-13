@@ -7,6 +7,7 @@ import { DateDivider, MessageBubble } from '@/entities/message'
 import { selectChatMessages, useMessagesStore } from '@/entities/messages'
 import { useSessionStore } from '@/entities/session'
 import { openChat } from '@/features/open-chat'
+import { MessageComposer, retryChatText } from '@/features/send-message'
 import { i18n } from '@/shared/config'
 import { Wallpaper } from '@/shared/ui'
 import { buildConversationRows } from '../lib/conversation-rows'
@@ -180,6 +181,13 @@ export function ConversationPane({ chat, isMobile, onBack }: ConversationPanePro
                 >
                   {row.kind === 'divider' ? (
                     <DateDivider label={row.label} />
+                  ) : row.message.direction === 'outgoing' && row.message.status === 'failed' ? (
+                    <MessageBubble
+                      message={row.message}
+                      onRetry={() => {
+                        void retryChatText(chat.id, row.message.id)
+                      }}
+                    />
                   ) : (
                     <MessageBubble message={row.message} />
                   )}
@@ -189,6 +197,7 @@ export function ConversationPane({ chat, isMobile, onBack }: ConversationPanePro
           </div>
         )}
       </section>
+      <MessageComposer chatId={chat.id} />
       <ActionIcon
         className={classes.jump}
         variant="white"

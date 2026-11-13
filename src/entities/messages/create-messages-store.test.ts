@@ -270,6 +270,56 @@ describe('createMessagesStore — live events', () => {
   })
 })
 
+describe('createMessagesStore — dropMessage', () => {
+  it('removes only the addressed message from the chat', () => {
+    const store = createStore()
+    expect(
+      store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm1', timestamp: 1_000 })),
+    ).toBe(true)
+    expect(
+      store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm2', timestamp: 2_000 })),
+    ).toBe(true)
+
+    store.getState().dropMessage('chat-1', 'm1')
+
+    expect(store.getState().byChat['chat-1']?.map((message) => message.id)).toEqual(['m2'])
+  })
+
+  it('clears the recorded failure when the failed message is dropped', () => {
+    const store = createStore()
+    const pendingId = store.getState().appendPending('chat-1', 'doomed')
+    store.getState().markSendFailed('chat-1', pendingId, new ApiError('boom', { kind: 'status' }))
+    expect(store.getState().failedSend).not.toBeNull()
+
+    store.getState().dropMessage('chat-1', pendingId)
+
+    expect(store.getState().byChat['chat-1']).toEqual([])
+    expect(store.getState().failedSend).toBeNull()
+  })
+
+  it('keeps the recorded failure of another chat untouched', () => {
+    const store = createStore()
+    const pendingId = store.getState().appendPending('chat-1', 'doomed')
+    store.getState().markSendFailed('chat-1', pendingId, new ApiError('boom', { kind: 'status' }))
+
+    store.getState().dropMessage('chat-2', 'some-other-id')
+
+    expect(store.getState().failedSend).toMatchObject({ chatId: 'chat-1', pendingId })
+  })
+
+  it('ignores unknown message ids and unknown chats', () => {
+    const store = createStore()
+    expect(
+      store.getState().applyMessageEvent(createLiveMessageEvent({ id: 'm1', timestamp: 1_000 })),
+    ).toBe(true)
+
+    store.getState().dropMessage('chat-1', 'missing')
+    store.getState().dropMessage('chat-unknown', 'm1')
+
+    expect(store.getState().byChat['chat-1']?.map((message) => message.id)).toEqual(['m1'])
+  })
+})
+
 describe('createMessagesStore — history hydration', () => {
   const historyItem = (overrides: Partial<GreenApiHistoryItem>): GreenApiHistoryItem => ({
     type: 'incoming',

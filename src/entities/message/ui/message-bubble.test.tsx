@@ -1,7 +1,7 @@
 import { MantineProvider } from '@mantine/core'
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import { maxTheme } from '@/shared/config'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { i18n, maxTheme } from '@/shared/config'
 import { DateDivider } from './date-divider'
 import dividerClasses from './date-divider.module.css'
 import type { MessageBubbleModel } from './message-bubble'
@@ -22,10 +22,10 @@ const baseMessage: MessageBubbleModel = {
   status: null,
 }
 
-const renderBubble = (message: MessageBubbleModel): void => {
+const renderBubble = (message: MessageBubbleModel, onRetry?: () => void): void => {
   render(
     <MantineProvider theme={maxTheme}>
-      <MessageBubble message={message} />
+      <MessageBubble message={message} {...(onRetry === undefined ? null : { onRetry })} />
     </MantineProvider>,
   )
 }
@@ -80,6 +80,26 @@ describe('MessageBubble', () => {
     renderBubble({ ...baseMessage, direction: 'outgoing', status: 'failed' })
     expect(screen.getByText('Hello there').parentElement).toHaveAttribute('data-failed', 'true')
     expect(tick('failed')).toBe('✕')
+  })
+
+  it('offers a retry action on failed outgoing bubbles and fires it on click', () => {
+    const onRetry = vi.fn()
+    renderBubble({ ...baseMessage, direction: 'outgoing', status: 'failed' }, onRetry)
+
+    fireEvent.click(screen.getByRole('button', { name: i18n.messenger.conversation.retryFailed }))
+
+    expect(onRetry).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the retry action out of non-failed bubbles and handler-less renders', () => {
+    renderBubble({ ...baseMessage, direction: 'outgoing', status: 'failed' })
+    expect(
+      screen.queryByRole('button', { name: i18n.messenger.conversation.retryFailed }),
+    ).toBeNull()
+    renderBubble({ ...baseMessage, direction: 'outgoing', status: 'sent' }, () => {})
+    expect(
+      screen.queryByRole('button', { name: i18n.messenger.conversation.retryFailed }),
+    ).toBeNull()
   })
 
   it('renders outgoing history entry without status without ticks', () => {

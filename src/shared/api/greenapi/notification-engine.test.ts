@@ -797,10 +797,12 @@ describe('notification engine over the real facade gateway (MSW)', () => {
         true,
       )
     })
+    await vi.waitFor(() => {
+      expect(calls).toBeGreaterThanOrEqual(4)
+    })
     await engine.stop()
     unsubscribe()
 
-    expect(calls).toBeGreaterThanOrEqual(4)
     expect(events.filter((event) => event.kind === 'pollFailed')).toHaveLength(2)
   })
 })

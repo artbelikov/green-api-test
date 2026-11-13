@@ -1,0 +1,52 @@
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  flex: none;
+  margin: 8px 20px 16px;
+  padding: 6px 8px 6px 16px;
+  background: var(--mantine-color-white);
+  border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(15, 15, 15, 0.12);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--mantine-color-text);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 20px;
+  padding: 8px 0;
+  max-height: 128px;
+  overflow-y: auto;
+}
+
+.input::placeholder {
+  color: var(--mantine-color-dimmed);
+}
+
+.send {
+  flex: none;
+  margin-bottom: 4px;
+}
+
+.mic {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 4px;
+  color: var(--mantine-color-dimmed);
+}
+
+.mic svg {
+  width: 22px;
+  height: 22px;
+}

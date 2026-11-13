@@ -38,6 +38,7 @@ export interface MessagesState {
   appendPending(chatId: string, text: string): string
   reconcileSent(chatId: string, pendingId: string, idMessage: string): boolean
   markSendFailed(chatId: string, pendingId: string, error: ApiError): void
+  dropMessage(chatId: string, messageId: string): void
   applyMessageEvent(event: MessageNotificationEvent): boolean
   applyStatusEvent(event: StatusNotificationEvent): boolean
   loadChatHistory(chatId: string, credentials: GreenApiCredentials): Promise<HistoryPhase>
@@ -238,6 +239,22 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
               message.id === pendingId ? { ...message, status: 'failed' as const } : message,
             ),
           },
+        })
+        persist()
+      },
+
+      dropMessage(chatId, messageId) {
+        const { byChat, failedSend } = get()
+        const messages = byChat[chatId] ?? []
+        const next = messages.filter((message) => message.id !== messageId)
+        const removed = next.length !== messages.length
+        const failureMatches = failedSend !== null && failedSend.pendingId === messageId
+        if (!removed && !failureMatches) {
+          return
+        }
+        set({
+          byChat: { ...byChat, [chatId]: next },
+          failedSend: failureMatches ? null : failedSend,
         })
         persist()
       },

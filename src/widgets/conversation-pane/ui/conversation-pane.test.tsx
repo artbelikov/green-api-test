@@ -1,9 +1,11 @@
 import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import { act } from 'react'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import bubbleClasses from '@/entities/message/ui/message-bubble.module.css'
 import { type MessagesState, useMessagesStore } from '@/entities/messages'
 import { useSessionStore } from '@/entities/session'
 import type { GreenApiCredentials, Message } from '@/shared/api/greenapi'
@@ -16,6 +18,7 @@ const mocks = vi.hoisted(() => ({ scrollToOffset: vi.fn() }))
 
 const SCROLL_CLASS = classes.scroll as string
 const JUMP_CLASS = classes.jump as string
+const BUBBLE_CLASS = bubbleClasses.bubble as string
 
 vi.mock('@tanstack/react-virtual', () => ({
   useVirtualizer: (options: { count: number; getItemKey?: (index: number) => string }) => {
@@ -262,5 +265,64 @@ describe('ConversationPane', () => {
 
     expect(await screen.findByText('History line', {}, FIND_OPTIONS)).toBeInTheDocument()
     expect(useMessagesStore.getState().history[CHAT.id]).toBe('ready')
+  })
+
+  it('mounts the composer under the messages region', () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+
+    renderPane()
+
+    expect(
+      screen.getByRole('textbox', { name: i18n.messenger.composer.inputLabel }),
+    ).toHaveAttribute('placeholder', i18n.messenger.composer.placeholder)
+  })
+
+  it('sends text from the composer and renders the reconciled bubble', async () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    mockGateway.autoReplyEnabled = false
+
+    renderPane()
+
+    const input = screen.getByRole('textbox', { name: i18n.messenger.composer.inputLabel })
+    fireEvent.change(input, { target: { value: 'first outgoing line' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => {
+      expect(useMessagesStore.getState().byChat[CHAT.id]?.[0]).toMatchObject({
+        text: 'first outgoing line',
+        status: 'sent',
+      })
+    })
+    expect(screen.getByText('first outgoing line')).toBeInTheDocument()
+  })
+
+  it('retries a failed send from the bubble affordance', async () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    mockGateway.autoReplyEnabled = false
+    server.use(
+      http.post(
+        `${CREDENTIALS.apiUrl}/waInstance${CREDENTIALS.idInstance}/sendMessage/${CREDENTIALS.apiTokenInstance}`,
+        () => new HttpResponse('boom', { status: 500 }),
+      ),
+    )
+
+    renderPane()
+
+    const input = screen.getByRole('textbox', { name: i18n.messenger.composer.inputLabel })
+    fireEvent.change(input, { target: { value: 'doomed line' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => {
+      expect(document.querySelector(`.${BUBBLE_CLASS}[data-failed='true']`)).not.toBeNull()
+    })
+
+    server.resetHandlers()
+    fireEvent.click(screen.getByRole('button', { name: i18n.messenger.conversation.retryFailed }))
+
+    await waitFor(() => {
+      expect(useMessagesStore.getState().byChat[CHAT.id]?.[0]).toMatchObject({ status: 'sent' })
+      expect(useMessagesStore.getState().byChat[CHAT.id]).toHaveLength(1)
+    })
+    expect(document.querySelector(`.${BUBBLE_CLASS}[data-failed='true']`)).toBeNull()
   })
 })
