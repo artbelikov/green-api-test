@@ -1,5 +1,5 @@
 import { ActionIcon } from '@mantine/core'
-import { IconMicrophone, IconSend } from '@tabler/icons-react'
+import { IconSend } from '@tabler/icons-react'
 import type { KeyboardEvent } from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useSessionStore } from '@/entities/session'
@@ -84,11 +84,7 @@ export function MessageComposer({ chatId }: MessageComposerProps) {
         >
           <IconSend size={20} aria-hidden />
         </ActionIcon>
-      ) : (
-        <span className={classes.mic} aria-hidden="true" title={i18n.messenger.composer.micTitle}>
-          <IconMicrophone size={22} />
-        </span>
-      )}
+      ) : null}
     </form>
   )
 }

@@ -22,7 +22,6 @@ const CREDENTIALS: GreenApiCredentials = {
 }
 
 const COMPOSER_CLASS = classes.composer as string
-const MIC_CLASS = classes.mic as string
 
 const server = setupServer(...handlers)
 
@@ -68,28 +67,24 @@ const textarea = (): HTMLTextAreaElement => {
   return node
 }
 
-const micGlyph = (): Element | null => document.querySelector(`.${MIC_CLASS}`)
-
 const connectSession = (): void => {
   useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
 }
 
 describe('MessageComposer', () => {
-  it('renders the input with the placeholder and the mic glyph while empty', () => {
+  it('renders the input with the placeholder and no controls while empty', () => {
     renderComposer()
 
     expect(textarea()).toHaveAttribute('placeholder', i18n.messenger.composer.placeholder)
-    expect(micGlyph()).not.toBeNull()
     expect(screen.queryByRole('button', { name: i18n.messenger.composer.sendAction })).toBeNull()
   })
 
-  it('swaps the mic glyph for the send button when text is entered', () => {
+  it('shows the send button when text is entered', () => {
     connectSession()
     renderComposer()
 
     fireEvent.change(textarea(), { target: { value: 'hello' } })
 
-    expect(micGlyph()).toBeNull()
     expect(screen.getByRole('button', { name: i18n.messenger.composer.sendAction })).toBeEnabled()
   })
 

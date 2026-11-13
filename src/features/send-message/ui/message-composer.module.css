@@ -34,14 +34,3 @@
   flex: none;
   margin-bottom: 4px;
 }
-
-.mic {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  margin-bottom: 4px;
-  color: var(--mantine-color-dimmed);
-}

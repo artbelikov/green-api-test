@@ -59,7 +59,6 @@ export const i18n = {
       inputLabel: 'Message text',
       placeholder: 'Message',
       sendAction: 'Send',
-      micTitle: 'Voice messages are not supported',
       offlineTooltip: 'You are offline. Reconnect to send messages.',
     },
   },
