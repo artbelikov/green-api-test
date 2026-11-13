@@ -8,7 +8,7 @@ import { MAX_SEND_TEXT_LENGTH, validateSendText } from '../lib/validate-send-tex
 import { sendChatText } from '../send-chat-text'
 import classes from './message-composer.module.css'
 
-export interface MessageComposerProps {
+export type MessageComposerProps = {
   readonly chatId: string
 }
 

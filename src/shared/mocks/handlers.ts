@@ -16,12 +16,12 @@ const DEFAULT_SETTINGS: Readonly<Record<string, string>> = {
   webhookUrl: '',
 }
 
-interface QueuedReceipt {
+type QueuedReceipt = {
   readonly receiptId: number
   readonly body: GreenApiNotificationEnvelope
 }
 
-export interface MockMessage {
+export type MockMessage = {
   readonly idMessage: string
   readonly chatId: string
   readonly direction: 'incoming' | 'outgoing'
@@ -29,7 +29,7 @@ export interface MockMessage {
   readonly timestamp: number
 }
 
-export interface MockChat {
+export type MockChat = {
   readonly chatId: string
   readonly name: string
   readonly type: string

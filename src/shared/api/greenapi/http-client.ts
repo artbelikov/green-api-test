@@ -1,4 +1,4 @@
-export interface GreenApiCredentials {
+export type GreenApiCredentials = {
   readonly apiUrl: string
   readonly idInstance: string
   readonly apiTokenInstance: string
@@ -6,7 +6,7 @@ export interface GreenApiCredentials {
 
 export type ApiErrorKind = 'status' | 'timeout' | 'aborted' | 'network' | 'malformed'
 
-export interface ApiErrorInit {
+export type ApiErrorInit = {
   readonly kind: ApiErrorKind
   readonly status?: number | null
   readonly retryAfterSeconds?: number | null
@@ -53,7 +53,7 @@ export class ApiError extends Error {
 
 const DEFAULT_TIMEOUT_MS = 20_000
 
-export interface GreenApiRequest {
+export type GreenApiRequest = {
   readonly endpoint: string
   readonly pathSuffix?: string
   readonly verb?: 'GET' | 'POST' | 'DELETE'

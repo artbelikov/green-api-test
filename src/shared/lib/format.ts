@@ -18,7 +18,7 @@ export const formatChatListTime = (timestampMs: number, nowMs: number): string =
 
 export const formatMessageTime = (timestampMs: number): string => TIME_FORMAT.format(timestampMs)
 
-export interface DayDividerLabels {
+export type DayDividerLabels = {
   readonly today: string
   readonly yesterday: string
 }

@@ -13,28 +13,28 @@ import type {
 
 const SESSION_STORAGE_KEY = 'green-api-messenger:session:v1'
 
-interface PersistedSession {
+type PersistedSession = {
   readonly credentials: GreenApiCredentials
   readonly settledAt: number | null
 }
 
-export interface StateGateway {
+export type StateGateway = {
   getStateInstance(credentials: GreenApiCredentials): Promise<GreenApiInstanceState>
 }
 
-export interface SessionGateway {
+export type SessionGateway = {
   readonly state: StateGateway
   readonly settings: SettingsGateway
 }
 
-export interface SessionStoreDeps {
+export type SessionStoreDeps = {
   readonly gateway: SessionGateway
   readonly storage: KeyValueStore
   readonly now: () => number
   readonly settleDurationMs: number
 }
 
-export interface SessionState {
+export type SessionState = {
   readonly credentials: GreenApiCredentials | null
   readonly status: SessionStatus
   readonly reconnecting: boolean

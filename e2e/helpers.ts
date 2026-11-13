@@ -1,14 +1,14 @@
 import { expect, type Page } from '@playwright/test'
 import { i18n } from '../src/shared/config'
 
-export interface BackgroundDelivery {
+export type BackgroundDelivery = {
   readonly idMessage: string
   readonly chatId: string
   readonly chatName: string | null
   readonly text: string
 }
 
-export interface StatusDelivery {
+export type StatusDelivery = {
   readonly idMessage: string
   readonly chatId: string
   readonly status: 'sent' | 'delivered' | 'read'

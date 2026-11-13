@@ -19,11 +19,11 @@ export type NotificationEngineEvent =
 
 export type NotificationEngineListener = (event: NotificationEngineEvent) => void | Promise<void>
 
-export interface NotificationScheduler {
+export type NotificationScheduler = {
   schedule(delayMs: number, run: () => void): () => void
 }
 
-export interface NotificationEngineGateway {
+export type NotificationEngineGateway = {
   receiveNotification(
     credentials: GreenApiCredentials,
     receiveTimeoutSeconds: number,
@@ -36,7 +36,7 @@ export interface NotificationEngineGateway {
   ): Promise<GreenApiDeleteNotificationResult>
 }
 
-export interface NotificationEngineDeps {
+export type NotificationEngineDeps = {
   readonly gateway: NotificationEngineGateway
   readonly scheduler?: NotificationScheduler
   readonly visibility?: () => NotificationVisibility
@@ -52,7 +52,7 @@ export const NOTIFICATION_ENGINE_INITIAL_BACKOFF_MS = 1_000
 export const NOTIFICATION_ENGINE_MAX_BACKOFF_MS = 30_000
 export const NOTIFICATION_ENGINE_HIDDEN_DISPATCH_INTERVAL_MS = 1_000
 
-export interface NotificationEngine {
+export type NotificationEngine = {
   start(credentials: GreenApiCredentials): void
   stop(): Promise<void>
   subscribe(listener: NotificationEngineListener): () => void
@@ -98,7 +98,7 @@ const sameCredentials = (a: GreenApiCredentials, b: GreenApiCredentials): boolea
 
 const clear = (): void => undefined
 
-interface PendingNotification {
+type PendingNotification = {
   readonly receiptId: number
   readonly event: DispatchableNotification | null
   readonly resolveSettled: (() => void) | null

@@ -13,7 +13,7 @@ const isPhoneCode = (code: NewChatErrorCode): code is PhoneErrorCode =>
 const errorText = (code: NewChatErrorCode): string =>
   isPhoneCode(code) ? i18n.phone.errors[code] : i18n.newChat.errors[code]
 
-export interface NewChatModalProps {
+export type NewChatModalProps = {
   readonly opened: boolean
   readonly onClose: () => void
 }

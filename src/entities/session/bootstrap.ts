@@ -14,12 +14,12 @@ const BOOTSTRAP_FLAGS: readonly GreenApiWebhookFlag[] = [
   'stateWebhook',
 ]
 
-export interface SettingsGateway {
+export type SettingsGateway = {
   getSettings(credentials: GreenApiCredentials): Promise<GreenApiSettingsState>
   setSettings(credentials: GreenApiCredentials, patch: GreenApiSettingsPatch): Promise<void>
 }
 
-export interface BootstrapOutcome {
+export type BootstrapOutcome = {
   readonly settledAt: number
   readonly appliedFlags: readonly GreenApiWebhookFlag[]
 }

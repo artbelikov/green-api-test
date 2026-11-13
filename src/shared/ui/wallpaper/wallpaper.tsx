@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { DOODLE_TILE_SIZE, doodleTile } from './doodle-tile'
 import classes from './wallpaper.module.css'
 
-export interface WallpaperProps {
+export type WallpaperProps = {
   readonly topColor: string
   readonly bottomColor: string
   readonly doodleColor: string

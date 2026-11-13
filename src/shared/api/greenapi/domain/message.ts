@@ -4,7 +4,7 @@ export type MessageDirection = 'incoming' | 'outgoing'
 
 export type MessageDeliveryStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed'
 
-export interface Message {
+export type Message = {
   readonly id: string
   readonly chatId: string
   readonly direction: MessageDirection
@@ -159,7 +159,7 @@ export function mapNotification(
   }
 }
 
-export interface NotificationChatFallback {
+export type NotificationChatFallback = {
   readonly chatId: string
   readonly name: string
 }

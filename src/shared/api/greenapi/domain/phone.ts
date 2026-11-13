@@ -1,6 +1,6 @@
 export type PhoneErrorCode = 'empty' | 'notANumber' | 'unsupportedRegion'
 
-export interface PhoneNormalizationError {
+export type PhoneNormalizationError = {
   readonly code: PhoneErrorCode
 }
 

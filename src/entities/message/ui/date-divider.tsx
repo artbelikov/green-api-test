@@ -1,6 +1,6 @@
 import classes from './date-divider.module.css'
 
-export interface DateDividerProps {
+export type DateDividerProps = {
   readonly label: string
 }
 

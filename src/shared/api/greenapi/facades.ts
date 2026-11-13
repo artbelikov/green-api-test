@@ -16,17 +16,17 @@ import type {
   ReceivedNotification,
 } from './types'
 
-export interface GreenApiFacadeOptions {
+export type GreenApiFacadeOptions = {
   readonly signal?: AbortSignal | undefined
   readonly timeoutMs?: number | undefined
 }
 
-export interface SendMessageArgs {
+export type SendMessageArgs = {
   readonly chatId: string
   readonly text: string
 }
 
-export interface ChatHistoryArgs {
+export type ChatHistoryArgs = {
   readonly chatId: string
   readonly count: number
 }

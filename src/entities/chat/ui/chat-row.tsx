@@ -7,7 +7,7 @@ export type ChatRowDirection = 'incoming' | 'outgoing'
 
 export type ChatRowStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | null
 
-export interface ChatRowModel {
+export type ChatRowModel = {
   readonly id: string
   readonly name: string
   readonly unread: number
@@ -19,7 +19,7 @@ export interface ChatRowModel {
   } | null
 }
 
-export interface ChatRowProps {
+export type ChatRowProps = {
   readonly chat: ChatRowModel
   readonly avatar: ReactNode
   readonly active: boolean

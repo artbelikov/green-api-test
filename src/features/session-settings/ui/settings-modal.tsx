@@ -2,7 +2,7 @@ import { Button, Divider, Group, Modal, Stack, Text } from '@mantine/core'
 import { useSessionStore } from '@/entities/session'
 import { i18n } from '@/shared/config'
 
-export interface SettingsModalProps {
+export type SettingsModalProps = {
   readonly opened: boolean
   readonly onClose: () => void
 }

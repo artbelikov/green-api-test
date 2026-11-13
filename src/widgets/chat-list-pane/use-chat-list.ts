@@ -34,7 +34,7 @@ const hydratePreviewsInBackground = async (
   }
 }
 
-export interface ChatListHydration {
+export type ChatListHydration = {
   readonly loading: boolean
 }
 

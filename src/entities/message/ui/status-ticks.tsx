@@ -1,7 +1,7 @@
 import type { MessageDeliveryStatus } from '@/shared/api/greenapi'
 import classes from './status-ticks.module.css'
 
-export interface StatusTicksProps {
+export type StatusTicksProps = {
   readonly status: MessageDeliveryStatus
 }
 

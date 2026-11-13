@@ -33,7 +33,7 @@ const createMemoryStorage = (): KeyValueStore & { entries(): Map<string, string>
   }
 }
 
-interface GatewayOverrides {
+type GatewayOverrides = {
   state?: string
   stateError?: unknown
   settings?: Record<string, string | number | boolean>
@@ -77,7 +77,7 @@ const createGateway = (overrides: GatewayOverrides = {}) => {
   return { gateway, applied }
 }
 
-interface StoreOptions {
+type StoreOptions = {
   gateway?: SessionGateway
   storage?: KeyValueStore
   now?: () => number

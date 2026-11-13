@@ -1,15 +1,15 @@
-export interface Clock {
+export type Clock = {
   now(): number
   schedule(delayMs: number, run: () => void): void
   random(): number
 }
 
-export interface RateQueueOptions {
+export type RateQueueOptions = {
   readonly clock?: Clock
   readonly jitterRatio?: number
 }
 
-interface Slot {
+type Slot = {
   readonly limit: number
   chain: Promise<void>
   lastRun: number

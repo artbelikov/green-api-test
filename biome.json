@@ -26,11 +26,31 @@
     "enabled": true,
     "rules": {
       "preset": "recommended",
+      "style": {
+        "useConsistentTypeDefinitions": {
+          "level": "error",
+          "options": {
+            "style": "type"
+          }
+        }
+      },
       "a11y": {
         "noNoninteractiveTabindex": "off"
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["**/*.d.ts", "src/app/mocks/worker.ts", "src/shared/config/theme.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useConsistentTypeDefinitions": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "single",

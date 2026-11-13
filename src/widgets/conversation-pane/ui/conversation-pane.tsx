@@ -22,13 +22,13 @@ const BUBBLE_ROW_BASE = 48
 const MESSAGE_LINE_HEIGHT = 20
 const ESTIMATED_CHARS_PER_LINE = 48
 
-export interface ConversationChat {
+export type ConversationChat = {
   readonly id: string
   readonly name: string
   readonly username: string | null
 }
 
-export interface ConversationPaneProps {
+export type ConversationPaneProps = {
   readonly chat: ConversationChat
   readonly isMobile: boolean
   readonly onBack: () => void

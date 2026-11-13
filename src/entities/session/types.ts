@@ -2,7 +2,7 @@ export type SessionStatus = 'disconnected' | 'connecting' | 'connected'
 
 export type BootstrapPhase = 'idle' | 'running' | 'settling' | 'done' | 'failed'
 
-export interface ConnectInput {
+export type ConnectInput = {
   readonly idInstance: string
   readonly apiTokenInstance: string
   readonly apiUrl: string

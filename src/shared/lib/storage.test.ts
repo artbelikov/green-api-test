@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { type KeyValueStore, localStorageStore, readJson, writeJson } from './storage'
 
-interface Payload {
+type Payload = {
   value: number
 }
 

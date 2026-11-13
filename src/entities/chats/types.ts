@@ -5,7 +5,7 @@ import type {
   MessageDirection,
 } from '@/shared/api/greenapi'
 
-export interface ChatLastMessagePreview {
+export type ChatLastMessagePreview = {
   readonly id: string
   readonly text: string
   readonly direction: MessageDirection
@@ -13,7 +13,7 @@ export interface ChatLastMessagePreview {
   readonly timestamp: number
 }
 
-export interface ChatSummary {
+export type ChatSummary = {
   readonly id: string
   readonly name: string
   readonly type: ChatType
@@ -24,13 +24,13 @@ export interface ChatSummary {
   readonly lastActivityAt: number
 }
 
-export interface ChatMessagePreviewInput {
+export type ChatMessagePreviewInput = {
   readonly message: Message
   readonly fallbackName: string | null
   readonly markUnread?: boolean
 }
 
-export interface ChatStatusUpdateInput {
+export type ChatStatusUpdateInput = {
   readonly idMessage: string
   readonly status: MessageDeliveryStatus
 }

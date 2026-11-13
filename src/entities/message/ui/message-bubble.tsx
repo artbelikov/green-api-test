@@ -6,7 +6,7 @@ import { formatMessageTime } from '@/shared/lib'
 import classes from './message-bubble.module.css'
 import { StatusTicks } from './status-ticks'
 
-export interface MessageBubbleModel {
+export type MessageBubbleModel = {
   readonly id: string
   readonly direction: MessageDirection
   readonly text: string
@@ -14,7 +14,7 @@ export interface MessageBubbleModel {
   readonly status: MessageDeliveryStatus | null
 }
 
-export interface MessageBubbleProps {
+export type MessageBubbleProps = {
   readonly message: MessageBubbleModel
   readonly onRetry?: () => void
 }

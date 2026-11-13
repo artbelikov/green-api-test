@@ -10,12 +10,12 @@ import type {
 
 const CHATS_STORAGE_KEY = 'green-api-messenger:chats:v1'
 
-export interface ChatsStoreDeps {
+export type ChatsStoreDeps = {
   readonly now: () => number
   readonly storage: KeyValueStore
 }
 
-export interface ChatsState {
+export type ChatsState = {
   readonly summaries: readonly ChatSummary[]
   readonly activeChatId: string | null
   upsertChats(chats: readonly Chat[]): void

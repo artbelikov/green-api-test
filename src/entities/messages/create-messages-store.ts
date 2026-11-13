@@ -17,21 +17,21 @@ const MESSAGES_STORAGE_KEY = 'green-api-messenger:messages:v1'
 
 export const DEFAULT_CAPACITY_PER_CHAT = 200
 
-export interface MessagesGateway {
+export type MessagesGateway = {
   getChatHistory(
     credentials: GreenApiCredentials,
     args: ChatHistoryArgs,
   ): Promise<GreenApiHistoryItem[]>
 }
 
-export interface MessagesStoreDeps {
+export type MessagesStoreDeps = {
   readonly gateway: MessagesGateway
   readonly now: () => number
   readonly storage: KeyValueStore
   readonly capacityPerChat: number
 }
 
-export interface MessagesState {
+export type MessagesState = {
   readonly byChat: Record<string, readonly Message[]>
   readonly history: Record<string, HistoryPhase>
   readonly failedSend: SendFailure | null
@@ -106,7 +106,7 @@ const isMessageValue = (value: unknown): value is Message => {
   )
 }
 
-interface PersistedMessages {
+type PersistedMessages = {
   readonly version: number
   readonly chats: unknown
   readonly history: unknown

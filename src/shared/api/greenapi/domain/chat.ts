@@ -2,7 +2,7 @@ import type { GreenApiChatListItem, GreenApiContactInfo } from '../types'
 
 export type ChatType = 'private' | 'group' | 'channel' | 'unknown'
 
-export interface Chat {
+export type Chat = {
   readonly id: string
   readonly name: string
   readonly type: ChatType
@@ -55,7 +55,7 @@ export function mapChatListItem(raw: GreenApiChatListItem): Chat | null {
   }
 }
 
-export interface ContactInfoFallback {
+export type ContactInfoFallback = {
   readonly chatId?: string
   readonly name?: string
 }

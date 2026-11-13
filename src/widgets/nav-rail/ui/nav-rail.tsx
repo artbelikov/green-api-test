@@ -5,7 +5,7 @@ import classes from './nav-rail.module.css'
 
 export type NavRailSection = 'all' | 'settings'
 
-export interface NavRailProps {
+export type NavRailProps = {
   readonly active: NavRailSection
   readonly onSelect: (section: NavRailSection) => void
 }

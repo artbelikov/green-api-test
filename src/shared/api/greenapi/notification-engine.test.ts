@@ -487,7 +487,7 @@ describe('notification engine failure handling', () => {
 })
 
 describe('notification engine visibility handling', () => {
-  interface VisibilityHarness {
+  type VisibilityHarness = {
     setVisibility(value: NotificationVisibility): void
     notifyVisibilityChange(): void
   }

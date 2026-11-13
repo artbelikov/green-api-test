@@ -4,7 +4,7 @@ import { ChatAvatar } from './avatar'
 
 const AVATAR_STALE_TIME_MS = 5 * 60_000
 
-export interface ChatAvatarWithUrlProps {
+export type ChatAvatarWithUrlProps = {
   readonly chatId: string
   readonly name: string
   readonly size: number

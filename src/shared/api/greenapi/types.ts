@@ -13,15 +13,15 @@ export type GreenApiSettingsPatch = Partial<Record<GreenApiWebhookFlag, GreenApi
 
 export type GreenApiSettingsState = Readonly<Record<string, string | number | boolean>>
 
-export interface GreenApiInstanceState {
+export type GreenApiInstanceState = {
   readonly stateInstance?: string
 }
 
-export interface GreenApiSendMessageResult {
+export type GreenApiSendMessageResult = {
   readonly idMessage?: string
 }
 
-export interface GreenApiChatListItem {
+export type GreenApiChatListItem = {
   readonly id?: string
   readonly chatId?: string
   readonly name?: string
@@ -33,7 +33,7 @@ export interface GreenApiChatListItem {
   readonly archive?: boolean
 }
 
-export interface GreenApiContactsItem {
+export type GreenApiContactsItem = {
   readonly id?: string
   readonly name?: string
   readonly contactName?: string
@@ -41,7 +41,7 @@ export interface GreenApiContactsItem {
   readonly newChatId?: string
 }
 
-export interface GreenApiContactInfo {
+export type GreenApiContactInfo = {
   readonly chatId?: string
   readonly name?: string
   readonly contactName?: string
@@ -59,13 +59,13 @@ export interface GreenApiContactInfo {
   readonly description?: string
 }
 
-export interface GreenApiAvatar {
+export type GreenApiAvatar = {
   readonly urlAvatar?: string
   readonly available?: boolean
   readonly base64Avatar?: string
 }
 
-export interface GreenApiHistoryItem {
+export type GreenApiHistoryItem = {
   readonly type?: string
   readonly idMessage?: string
   readonly timestamp?: number
@@ -82,13 +82,13 @@ export interface GreenApiHistoryItem {
   readonly isEdited?: boolean
 }
 
-export interface GreenApiInstanceData {
+export type GreenApiInstanceData = {
   readonly idInstance?: number
   readonly wid?: string
   readonly typeInstance?: string
 }
 
-export interface GreenApiSenderData {
+export type GreenApiSenderData = {
   readonly chatId?: string
   readonly chatName?: string
   readonly sender?: string
@@ -96,7 +96,7 @@ export interface GreenApiSenderData {
   readonly senderContactName?: string
 }
 
-export interface GreenApiNotificationEnvelope {
+export type GreenApiNotificationEnvelope = {
   readonly typeWebhook?: string
   readonly instanceData?: GreenApiInstanceData
   readonly timestamp?: number
@@ -112,7 +112,7 @@ export interface GreenApiNotificationEnvelope {
   }
 }
 
-export interface GreenApiNotificationReceipt {
+export type GreenApiNotificationReceipt = {
   readonly receiptId?: number
   readonly body?: GreenApiNotificationEnvelope | null
   readonly code?: string
@@ -120,16 +120,16 @@ export interface GreenApiNotificationReceipt {
   readonly status?: string
 }
 
-export interface ReceivedNotification {
+export type ReceivedNotification = {
   readonly receiptId: number
   readonly body: GreenApiNotificationEnvelope | null
 }
 
-export interface GreenApiReadChatResult {
+export type GreenApiReadChatResult = {
   readonly setRead?: boolean
 }
 
-export interface GreenApiDeleteNotificationResult {
+export type GreenApiDeleteNotificationResult = {
   readonly result?: boolean
   readonly reason?: string
 }

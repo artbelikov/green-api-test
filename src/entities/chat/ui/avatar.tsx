@@ -30,7 +30,7 @@ export const initialsOf = (name: string): string => {
   return `${first}${second}`.toUpperCase()
 }
 
-export interface ChatAvatarProps {
+export type ChatAvatarProps = {
   readonly name: string
   readonly seed: string
   readonly url: string | null

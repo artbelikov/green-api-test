@@ -23,7 +23,7 @@ export type NewChatResult =
   | { readonly ok: true; readonly chatId: string }
   | { readonly ok: false; readonly code: NewChatErrorCode }
 
-export interface NewChatDraft {
+export type NewChatDraft = {
   readonly phone: string
   readonly chatId: string
 }

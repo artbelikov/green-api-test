@@ -47,7 +47,7 @@ const shuffled = <T>(items: readonly T[], random: () => number): T[] => {
   return copy
 }
 
-interface StoreOptions {
+type StoreOptions = {
   readonly gateway?: MessagesGateway
   readonly capacityPerChat?: number
   readonly now?: () => number

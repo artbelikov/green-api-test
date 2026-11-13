@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { type Clock, RateQueue } from './rate-queue'
 
-interface ScheduledTask {
+type ScheduledTask = {
   readonly at: number
   readonly run: () => void
 }
