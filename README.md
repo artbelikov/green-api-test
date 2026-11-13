@@ -118,7 +118,7 @@ railway up
 railway domain
 ```
 
-**Deployed URL:** pending the first deploy — update this line with the Railway-generated domain.
+**Deployed URL:** <https://green-api-test-production-c7007a9c.up.railway.app/> — live-run checklist verified (2026-11-13): `/healthz` 200, deep-link refresh 200 (SPA fallback), `?mock=1` + `mockServiceWorker.js` served, hashed assets 200, `robots.txt` served.
 
 ### Live-run checklist (verify after each deploy)
 
@@ -132,7 +132,7 @@ railway domain
 
 Fastest routes to try the app:
 
-1. **Deployed demo — no instance needed**: open `https://<deployed-url>/?mock=1`. The scripted mock gateway connects instantly (any values accepted), the demo contact `79991234567` resolves by name, a sent message yields a live scripted reply ~1.2 s later, and `window.mockGateway` fault knobs (`pollOutage`, `invalidate`) let you exercise reconnect and session-invalidation recovery on demand.
+1. **Deployed demo — no instance needed**: open [green-api-test-production-c7007a9c.up.railway.app/?mock=1](https://green-api-test-production-c7007a9c.up.railway.app/?mock=1). The scripted mock gateway connects instantly (any values accepted), the demo contact `79991234567` resolves by name, a sent message yields a live scripted reply ~1.2 s later, and `window.mockGateway` fault knobs (`pollOutage`, `invalidate`) let you exercise reconnect and session-invalidation recovery on demand.
 2. **Your own free instance**: register at [green-api.com/telegram](https://green-api.com/telegram), pass Telegram authorization in their console, copy `idInstance` + `apiTokenInstance` from the console into the connect screen. Your real chats appear; read the limitations first — notably `readChat`.
 3. **Local run**: `pnpm install` → `pnpm dev` (mock mode also works on the dev URL with `?mock=1`); run the pyramid yourself with `pnpm test` and `pnpm test:e2e`.
 
