@@ -77,10 +77,8 @@ export const i18n = {
   },
   newChat: {
     title: 'New chat',
-    phoneLabel: 'Phone number',
-    phonePlaceholder: '79991234567',
-    chatIdLabel: 'Or full chatId (Telegram)',
-    chatIdPlaceholder: 'e.g. 79991234567 or -1001234567',
+    targetLabel: 'Phone number or chatId',
+    targetPlaceholder: '79991234567, @username or -1001234567',
     createAction: 'Create chat',
     cancelAction: 'Cancel',
     limitToast: 'Chat could not be created: the instance plan limit may be reached.',

@@ -51,21 +51,55 @@ const submitForm = (): void => {
   fireEvent.submit(form)
 }
 
+const typeTarget = (value: string): void => {
+  fireEvent.change(screen.getByLabelText(i18n.newChat.targetLabel), {
+    target: { value },
+  })
+}
+
 describe('NewChatModal', () => {
-  it('renders phone and chatId fields', () => {
+  it('renders the single target field and actions', () => {
     renderModal()
-    expect(screen.getByLabelText(i18n.newChat.phoneLabel)).toBeInTheDocument()
-    expect(screen.getByLabelText(i18n.newChat.chatIdLabel)).toBeInTheDocument()
+    expect(screen.getByLabelText(i18n.newChat.targetLabel)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: i18n.newChat.createAction })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: i18n.newChat.cancelAction })).toBeInTheDocument()
   })
 
-  it('auto-normalizes the phone draft while typing', () => {
-    renderModal()
-    const phone = screen.getByLabelText(i18n.newChat.phoneLabel)
-    fireEvent.change(phone, { target: { value: '8 999 123-45-67' } })
-    expect(phone).toHaveValue('79991234567')
+  it('creates a chat from a phone draft and closes the modal', async () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    const onClose = vi.fn()
+    renderModal(onClose)
+    typeTarget('8 999 123-45-67')
     submitForm()
-    expect(screen.queryByText(i18n.newChat.errors.emptyChatId)).not.toBeInTheDocument()
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(useChatsStore.getState().summaries[0]?.id).toBe('79991234567')
+    })
+  })
+
+  it('treats a chatId-shaped draft verbatim without phone normalization', async () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    renderModal()
+    typeTarget('-1001234567890')
+    submitForm()
+
+    await waitFor(() => {
+      expect(useChatsStore.getState().summaries[0]?.id).toBe('-1001234567890')
+    })
+  })
+
+  it('passes a username-shaped draft to contact resolution', async () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    renderModal()
+    typeTarget('@demo_contact')
+    submitForm()
+
+    await waitFor(() => {
+      expect(useChatsStore.getState().summaries[0]?.id).toBe('@demo_contact')
+    })
   })
 
   it('shows a validation error for an empty draft', async () => {
@@ -76,29 +110,10 @@ describe('NewChatModal', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('creates a chat from the demo phone and closes the modal', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
-    const onClose = vi.fn()
-    renderModal(onClose)
-    fireEvent.change(screen.getByLabelText(i18n.newChat.phoneLabel), {
-      target: { value: '79991234567' },
-    })
-    submitForm()
-
-    await waitFor(() => {
-      expect(onClose).toHaveBeenCalled()
-    })
-    await waitFor(() => {
-      expect(useChatsStore.getState().summaries[0]?.name).toBe('Demo Contact')
-    })
-  })
-
   it('shows an inline error for an unsupported phone region', async () => {
     useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
     renderModal()
-    fireEvent.change(screen.getByLabelText(i18n.newChat.phoneLabel), {
-      target: { value: '375291234567' },
-    })
+    typeTarget('375291234567')
     submitForm()
 
     expect(await screen.findByText(i18n.phone.errors.unsupportedRegion)).toBeInTheDocument()

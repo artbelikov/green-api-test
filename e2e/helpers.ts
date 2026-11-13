@@ -30,7 +30,7 @@ export async function createChatByPhone(
 ): Promise<void> {
   await page.getByRole('button', { name: i18n.messenger.list.newChatAction }).click()
   const dialog = page.getByRole('dialog')
-  await dialog.getByLabel(i18n.newChat.phoneLabel).fill(phone)
+  await dialog.getByLabel(i18n.newChat.targetLabel).fill(phone)
   await dialog.getByRole('button', { name: i18n.newChat.createAction }).click()
   await expect(page.getByRole('heading', { level: 3, name: expectedName })).toBeVisible()
 }

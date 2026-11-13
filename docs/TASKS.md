@@ -66,11 +66,23 @@ Global rules for every session (paste with each task):
 ### T10. Railway deployment + README/deploy instructions
 - Scope: `Dockerfile` (pnpm build → nginx alpine), `nginx.conf` (gzip, cache, SPA fallback, security headers, `/healthz`), `railway.toml`, `robots.txt`; README deploy section (GitHub service flow + `railway up`), live-run checklist verified against deployed URL (deep-link refresh works, connect→chat demo on prod).
 - AC: deployed URL reachable; all routes SPA-refresh-safe; README complete: setup, scripts, env, architecture overview, testing pyramid, deploy, **reviewer guidance (own free instance / `?mock=1` demo link / video)**, limitations (unread client-side, Telegram phone caveat, `readChat` marks the linked real account's chats read, history of pre-enable messages), screenshots section.
-
 ### T11. Final QA + submission package (quality iteration)
+
 - Scope: full PLAN §11 demo script on real instance; CHANGELOG; tag v1.0.0; screenshots/video capture (mock or live, token never visible); submission checklist compiled (see PLAN §11 items).
 - AC: everything merged, CI green on `main`, README claims verified item-by-item, submission text ready (hr@green-api.com format).
 
+### T12. Tabler icon migration (polish)
+
+- Goal: replace every hand-authored/inline SVG icon in the app with `@tabler/icons-react` (https://tabler.io/icons) for a consistent, professional icon set.
+- Scope: install `@tabler/icons-react`; swap inline SVGs in `widgets/nav-rail` (chats/contacts/settings), the FAB plus icon in `widgets/chat-list-pane`, the composer mic/send icons, back chevron and any other ad-hoc glyphs across `features/*` / `widgets/*` / `entities/message` (status ticks stay custom — they are domain state, not icons); verify sizes/stroke width (1.5–2) match the visual spec; keep i18n `aria-label`s; delete dead inline SVG code.
+- AC: no inline decorative SVG remains except domain-state marks (ticks, doodle wallpaper); all icons render at consistent sizes; lint/typecheck/test/build + `check:bundle` green (bundle delta noted in PROGRESS); e2e still pass; screenshots re-captured.
+
+### T13. Props typing refactor: `interface` → `type` (code-style)
+
+- Goal: all React component props and object-shaped declarations use `type` aliases instead of `interface` (interfaces are for OOP-style declaration merging, which this codebase does not use; type aliases are the idiomatic default for props).
+- Scope: sweep `src/**` (and `e2e/**`) replacing `interface X { … }` with `type X = { … }` for props types (`*Props`), store/state shapes, helper params, and MSW payload types — unless a specific interface is intentionally extendable/merged (expected: none); Biome rule enforcement if available (e.g. `noInterface` / `useConsistentTypeDefinitions` in `biome.json`) so the style is locked by lint, not memory.
+- AC: `grep` finds zero `interface ` declarations for props/objects outside intentional cases (none expected); lint config carries the enforcement rule; all gates green (`lint`, `typecheck`, `test`, `build`, `check:bundle`, e2e).
+
 ---
 
-**Dependency graph:** T0 (git hygiene AC first) → T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T11. Sessions run **strictly sequentially** — an in-flight session owns `docs/PROGRESS.md`; only after its branch merges does the next session start (even the T5/T6 "pair" is sequential unless two sessions explicitly coordinate their PROGRESS edits). No re-order otherwise — 5-day budget is tight by design.
+**Dependency graph:** T0 (git hygiene AC first) → T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T10 → T10.5 → T12 → T13 → T11 (final QA last, after all polish). Sessions run **strictly sequentially** — an in-flight session owns `docs/PROGRESS.md`; only after its branch merges does the next session start (even the T5/T6 "pair" is sequential unless two sessions explicitly coordinate their PROGRESS edits). No re-order otherwise — 5-day budget is tight by design.

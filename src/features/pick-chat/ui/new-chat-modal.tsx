@@ -5,15 +5,7 @@ import type { PhoneErrorCode } from '@/shared/api/greenapi'
 import { i18n } from '@/shared/config'
 import { createNewChat, type NewChatErrorCode } from '../create-new-chat'
 
-const normalizePhoneDraft = (value: string): string => {
-  const hasPlus = value.trimStart().startsWith('+')
-  const digits = value.replace(/\D/g, '')
-  if (digits.length === 0) {
-    return ''
-  }
-  const normalized = digits.startsWith('8') ? `7${digits.slice(1)}` : digits
-  return hasPlus ? `+${normalized}` : normalized
-}
+const PHONE_DRAFT_PATTERN = /^[+\d][\d\s\-()]*$/
 
 const isPhoneCode = (code: NewChatErrorCode): code is PhoneErrorCode =>
   code === 'empty' || code === 'notANumber' || code === 'unsupportedRegion'
@@ -27,8 +19,7 @@ export interface NewChatModalProps {
 }
 
 export function NewChatModal({ opened, onClose }: NewChatModalProps) {
-  const [phone, setPhone] = useState('')
-  const [chatId, setChatId] = useState('')
+  const [draft, setDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -36,8 +27,7 @@ export function NewChatModal({ opened, onClose }: NewChatModalProps) {
     if (!opened) {
       return
     }
-    setPhone('')
-    setChatId('')
+    setDraft('')
     setError(null)
     setSubmitting(false)
   }, [opened])
@@ -49,7 +39,11 @@ export function NewChatModal({ opened, onClose }: NewChatModalProps) {
     }
     setError(null)
     setSubmitting(true)
-    const result = await createNewChat({ phone, chatId })
+    const isPhoneDraft = PHONE_DRAFT_PATTERN.test(draft.trim())
+    const result = await createNewChat({
+      phone: isPhoneDraft ? draft : '',
+      chatId: isPhoneDraft ? '' : draft,
+    })
     setSubmitting(false)
     if (!result.ok) {
       setError(errorText(result.code))
@@ -71,19 +65,11 @@ export function NewChatModal({ opened, onClose }: NewChatModalProps) {
             </Alert>
           ) : null}
           <TextInput
-            label={i18n.newChat.phoneLabel}
-            placeholder={i18n.newChat.phonePlaceholder}
-            inputMode="tel"
-            value={phone}
+            label={i18n.newChat.targetLabel}
+            placeholder={i18n.newChat.targetPlaceholder}
+            value={draft}
             disabled={submitting}
-            onChange={(event) => setPhone(normalizePhoneDraft(event.currentTarget.value))}
-          />
-          <TextInput
-            label={i18n.newChat.chatIdLabel}
-            placeholder={i18n.newChat.chatIdPlaceholder}
-            value={chatId}
-            disabled={submitting}
-            onChange={(event) => setChatId(event.currentTarget.value)}
+            onChange={(event) => setDraft(event.currentTarget.value)}
           />
           <Group justify="flex-end">
             <Button variant="default" radius="xl" onClick={onClose} disabled={submitting}>
