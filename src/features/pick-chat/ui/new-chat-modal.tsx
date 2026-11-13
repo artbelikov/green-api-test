@@ -42,7 +42,7 @@ export function NewChatModal({ opened, onClose }: NewChatModalProps) {
     const isPhoneDraft = PHONE_DRAFT_PATTERN.test(draft.trim())
     const result = await createNewChat({
       phone: isPhoneDraft ? draft : '',
-      chatId: isPhoneDraft ? '' : draft,
+      chatId: isPhoneDraft ? '' : draft.trim(),
     })
     setSubmitting(false)
     if (!result.ok) {

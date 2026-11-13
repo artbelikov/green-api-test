@@ -46,6 +46,7 @@ const mapApiError = (error: unknown): NewChatErrorCode => {
 
 export async function createNewChat(draft: NewChatDraft): Promise<NewChatResult> {
   const trimmedChatId = draft.chatId.trim()
+  const nicknameTarget = trimmedChatId.startsWith('@')
   let target: string
   let displayName: string
   if (trimmedChatId.length > 0) {
@@ -65,6 +66,9 @@ export async function createNewChat(draft: NewChatDraft): Promise<NewChatResult>
   }
   try {
     const profile = await getContactInfo(credentials, target)
+    if (nicknameTarget && (profile.chatId === undefined || profile.chatId === target)) {
+      return { ok: false, code: 'resolveFailed' }
+    }
     const chat = mapContactInfo(profile, { chatId: target, name: displayName })
     if (chat.id.length === 0) {
       return { ok: false, code: 'resolveFailed' }

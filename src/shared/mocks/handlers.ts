@@ -146,6 +146,16 @@ export const handlers: HttpHandler[] = [
     }
     const body = (await request.json()) as { chatId?: string }
     const chatId = typeof body.chatId === 'string' ? body.chatId : ''
+    if (chatId.slice(1) === 'demo_contact') {
+      ensureChat(DEMO_CONTACT_CHAT_ID, 'Demo Contact')
+      return HttpResponse.json({
+        chatId: DEMO_CONTACT_CHAT_ID,
+        name: 'Demo Contact',
+        username: 'demo_contact',
+        chatType: 'user',
+        lastSeen: 'recently',
+      })
+    }
     if (chatId.startsWith(DEMO_CONTACT_CHAT_ID)) {
       ensureChat(DEMO_CONTACT_CHAT_ID, 'Demo Contact')
       return HttpResponse.json({

@@ -76,29 +76,22 @@ describe('NewChatModal', () => {
       expect(onClose).toHaveBeenCalled()
     })
     await waitFor(() => {
-      expect(useChatsStore.getState().summaries[0]?.id).toBe('79991234567')
+      expect(useChatsStore.getState().summaries[0]?.name).toBe('Demo Contact')
     })
   })
 
-  it('treats a chatId-shaped draft verbatim without phone normalization', async () => {
+  it('resolves a nickname draft to the underlying chat', async () => {
     useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
-    renderModal()
-    typeTarget('-1001234567890')
-    submitForm()
-
-    await waitFor(() => {
-      expect(useChatsStore.getState().summaries[0]?.id).toBe('-1001234567890')
-    })
-  })
-
-  it('passes a username-shaped draft to contact resolution', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
-    renderModal()
+    const onClose = vi.fn()
+    renderModal(onClose)
     typeTarget('@demo_contact')
     submitForm()
 
     await waitFor(() => {
-      expect(useChatsStore.getState().summaries[0]?.id).toBe('@demo_contact')
+      expect(onClose).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(useChatsStore.getState().summaries[0]?.id).toBe('79991234567')
     })
   })
 
@@ -117,6 +110,16 @@ describe('NewChatModal', () => {
     submitForm()
 
     expect(await screen.findByText(i18n.phone.errors.unsupportedRegion)).toBeInTheDocument()
+    expect(useChatsStore.getState().summaries).toHaveLength(0)
+  })
+
+  it('shows the resolve failure when a nickname does not exist', async () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    renderModal()
+    typeTarget('@nobody_here')
+    submitForm()
+
+    expect(await screen.findByText(i18n.newChat.errors.resolveFailed)).toBeInTheDocument()
     expect(useChatsStore.getState().summaries).toHaveLength(0)
   })
 })
