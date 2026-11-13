@@ -16,7 +16,7 @@ export const i18n = {
     disconnectAction: 'Disconnect',
   },
   chat: {
-    sendFailedToast: 'Message was not sent. Check the connection and try again.',
+    sendFailed: 'Message was not sent. Check the connection and try again.',
   },
   messenger: {
     navRail: {
@@ -33,10 +33,12 @@ export const i18n = {
       emptyHint: 'Create your first chat — enter the recipient phone number.',
       youPrefix: 'You: ',
       status: {
-        connected: 'Connected',
+        connected: 'Authorized',
         connecting: 'Connecting',
+        reconnecting: 'Reconnecting…',
         disconnected: 'Offline',
       },
+      reconnectBanner: 'Connection lost — reconnecting…',
     },
     conversation: {
       placeholder: 'Select a chat to start messaging',

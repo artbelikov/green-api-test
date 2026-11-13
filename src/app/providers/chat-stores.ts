@@ -1,16 +1,38 @@
+import { notifications } from '@mantine/notifications'
 import { useChatsStore } from '@/entities/chats'
 import { useMessagesStore } from '@/entities/messages'
 import { useSessionStore } from '@/entities/session'
 import { getNotificationEngine, type NotificationEngineEvent } from '@/shared/api/greenapi'
 
+const TOAST_PREVIEW_LIMIT = 120
+
+const toastPreviewOf = (text: string): string =>
+  text.length > TOAST_PREVIEW_LIMIT ? `${text.slice(0, TOAST_PREVIEW_LIMIT)}…` : text
+
+const chatNameForToast = (chatId: string): string =>
+  useChatsStore.getState().summaries.find((summary) => summary.id === chatId)?.name ?? chatId
+
+const showBackgroundMessageToast = (chatId: string, text: string): void => {
+  notifications.show({
+    title: chatNameForToast(chatId),
+    message: toastPreviewOf(text),
+    withCloseButton: true,
+  })
+}
+
 const applyEngineEvent = (event: NotificationEngineEvent): void => {
   if (event.kind === 'message') {
     const applied = useMessagesStore.getState().applyMessageEvent(event)
-    if (applied) {
-      useChatsStore.getState().applyNewMessage({
-        message: event.message,
-        fallbackName: event.chatFallback?.name ?? null,
-      })
+    if (!applied) {
+      return
+    }
+    const chats = useChatsStore.getState()
+    chats.applyNewMessage({
+      message: event.message,
+      fallbackName: event.chatFallback?.name ?? null,
+    })
+    if (chats.activeChatId !== event.message.chatId && event.message.direction === 'incoming') {
+      showBackgroundMessageToast(event.message.chatId, event.message.text)
     }
     return
   }
@@ -22,6 +44,14 @@ const applyEngineEvent = (event: NotificationEngineEvent): void => {
         status: event.status,
       })
     }
+    return
+  }
+  if (event.kind === 'pollFailed') {
+    useSessionStore.getState().setReconnecting(true)
+    return
+  }
+  if (event.kind === 'pollRecovered') {
+    useSessionStore.getState().setReconnecting(false)
     return
   }
   useSessionStore.getState().disconnect()

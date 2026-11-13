@@ -101,6 +101,20 @@ describe('ChatListPane', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows the reconnecting chip while the session is degraded', async () => {
+    useSessionStore.setState({
+      credentials: CREDENTIALS,
+      status: 'connected',
+      reconnecting: true,
+    })
+
+    renderPane()
+
+    expect(
+      await screen.findByText(i18n.messenger.list.status.reconnecting, {}, FIND_OPTIONS),
+    ).toBeInTheDocument()
+  })
+
   it('opens the new chat modal from the FAB', async () => {
     useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
 

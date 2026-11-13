@@ -6,7 +6,7 @@ Scope kept deliberately minimal per the task: **text-only messaging** — connec
 
 > Stack: Vite 8 · React 19 · TypeScript (strict) · Mantine 9 · TanStack Query 5 · Zustand 5 · Feature Sliced Design · Biome 2 · Vitest + Testing Library + MSW (test pyramid) · deployed to Railway.com
 
-**Status: send flow merged (T1–T7 on `main`) — API client, session/connect/bootstrap, notification engine long-poll, chats/messages stores with history hydrate, unread counters, optimistic send, the MAX-Web chat list (nav rail, list pane, search, new-chat modal), the conversation pane (doodle wallpaper, floating header, day-grouped white/mint bubbles, status ticks, virtualized message list with scroll anchoring and jump-to-latest), and the composer (floating pill with mic→send swap, Enter/Shift+Enter, 4000-char guard, offline disable, failed-bubble retry)** (see `docs/PROGRESS.md` for the live board).
+**Status: MVP-2 complete (T1–T8 on `main`) — API client, session/connect/bootstrap, notification engine long-poll, chats/messages stores with history hydrate, unread counters, optimistic send, the MAX-Web chat list (nav rail, list pane, search, new-chat modal), the conversation pane (doodle wallpaper, floating header, day-grouped white/mint bubbles, status ticks, virtualized message list with scroll anchoring and jump-to-latest), the composer (floating pill with mic→send swap, Enter/Shift+Enter, 4000-char guard, offline disable, failed-bubble retry), and MVP-2 credibility: background-chat unread toasts, connection chip with a reconnecting state + auto-reconnect banner, failed-bubble tooltip, mobile single-pane layout, and the Playwright e2e + axe layer** (see `docs/PROGRESS.md` for the live board).
 
 ## Requirements
 
@@ -36,9 +36,10 @@ Mock/demo mode (no instance required): boot with `VITE_API_MODE=mock`, or open a
 | `pnpm typecheck`              | `tsc -b` over both TS projects                             |
 | `pnpm test`                   | Vitest run with v8 coverage (thresholds enforced)          |
 | `pnpm test:watch`             | Vitest in watch mode                                       |
+| `pnpm test:e2e`               | Playwright e2e (mock mode; auto-starts the dev server)     |
 | `pnpm msw:init`               | Regenerate `public/mockServiceWorker.js` after MSW updates |
 
-Planned, wired by later tasks: `pnpm test:e2e` (Playwright, T8) and `pnpm check:arch` (FSD import-direction script, T9) — see `docs/TASKS.md`.
+E2e runs against a Vite dev server launched in mock mode by Playwright (`webServer` in `playwright.config.ts`) — install the browser once with `pnpm exec playwright install chromium`, then `pnpm test:e2e`. Planned, wired by later tasks: `pnpm check:arch` (FSD import-direction script, T9) — see `docs/TASKS.md`.
 
 Every `git commit` runs [lefthook](https://github.com/evilmartians/lefthook) pre-commit hooks (`pnpm lint` + full `pnpm test` with coverage; installed automatically by `pnpm install` via the `prepare` script). `git commit --no-verify` skips them in emergencies.
 
@@ -69,7 +70,7 @@ Import direction is strictly downwards (app → widgets → features → entitie
 
 ## Testing
 
-Pyramid per `docs/PLAN.md` §6: Vitest unit (mappers, phone normalization, rate queue), Vitest+MSW integration (notification engine), Testing Library component tests, Playwright e2e in mock mode (from T8). Coverage thresholds (85% for `shared/**`, `entities/**`, `features/**`) are enforced on every `pnpm test`.
+Pyramid per `docs/PLAN.md` §6: Vitest unit (mappers, phone normalization, rate queue), Vitest+MSW integration (notification engine), Testing Library component tests, and Playwright e2e in mock mode (`pnpm test:e2e` — background-chat badge/toast/read scenario plus an axe pass with zero critical violations). Coverage thresholds (85% for `shared/**`, `entities/**`, `features/**`) are enforced on every `pnpm test`.
 
 There is no GitHub Actions pipeline by design: Railway builds and deploys `main` (task T10), and the task gate is `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm build` all green before every merge.
 

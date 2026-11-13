@@ -26,10 +26,15 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
     '--max-bubble-out': max.bubbleOut,
     '--max-bubble-out-opacity': String(max.bubbleOutOpacity),
   } as CSSProperties
-  const retryable = outgoing && message.status === 'failed' && onRetry !== undefined
+  const failed = outgoing && message.status === 'failed'
+  const retryable = failed && onRetry !== undefined
   return (
     <div className={classes.row} data-direction={message.direction} style={paletteVars}>
-      <div className={classes.bubble} data-failed={message.status === 'failed' || undefined}>
+      <div
+        className={classes.bubble}
+        data-failed={failed || undefined}
+        title={failed ? i18n.chat.sendFailed : undefined}
+      >
         <span className={classes.text}>{message.text}</span>
         <span className={classes.meta}>
           {retryable ? (
@@ -39,6 +44,7 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
               size="compact-sm"
               radius="xl"
               aria-label={i18n.messenger.conversation.retryFailed}
+              title={i18n.messenger.conversation.retryFailed}
               onClick={onRetry}
             >
               ↻

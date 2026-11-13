@@ -37,6 +37,7 @@ export interface SessionStoreDeps {
 export interface SessionState {
   readonly credentials: GreenApiCredentials | null
   readonly status: SessionStatus
+  readonly reconnecting: boolean
   readonly bootstrapPhase: BootstrapPhase
   readonly settledAt: number | null
   connect(input: ConnectInput): Promise<ConnectResult>
@@ -44,6 +45,7 @@ export interface SessionState {
   resume(): Promise<void>
   retryBootstrap(): Promise<void>
   refreshBootstrapPhase(): void
+  setReconnecting(reconnecting: boolean): void
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -147,6 +149,7 @@ export function createSessionStore(deps: SessionStoreDeps) {
     return {
       credentials: null,
       status: 'disconnected',
+      reconnecting: false,
       bootstrapPhase: 'idle',
       settledAt: null,
 
@@ -171,7 +174,13 @@ export function createSessionStore(deps: SessionStoreDeps) {
           set({ status: 'disconnected' })
           return { ok: false, code: mapConnectError(error) }
         }
-        set({ credentials, status: 'connected', bootstrapPhase: 'running', settledAt: null })
+        set({
+          credentials,
+          status: 'connected',
+          reconnecting: false,
+          bootstrapPhase: 'running',
+          settledAt: null,
+        })
         persist(credentials, null)
         await ensureBootstrap(credentials)
         return { ok: true }
@@ -181,7 +190,13 @@ export function createSessionStore(deps: SessionStoreDeps) {
         clearSettleTimer()
         resumeAttempted = false
         deps.storage.remove(SESSION_STORAGE_KEY)
-        set({ credentials: null, status: 'disconnected', bootstrapPhase: 'idle', settledAt: null })
+        set({
+          credentials: null,
+          status: 'disconnected',
+          reconnecting: false,
+          bootstrapPhase: 'idle',
+          settledAt: null,
+        })
       },
 
       async resume() {
@@ -219,6 +234,10 @@ export function createSessionStore(deps: SessionStoreDeps) {
           return
         }
         await ensureBootstrap(credentials)
+      },
+
+      setReconnecting(reconnecting) {
+        set({ reconnecting })
       },
 
       refreshBootstrapPhase() {

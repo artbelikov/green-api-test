@@ -242,6 +242,24 @@ describe('createSessionStore.connect', () => {
   })
 })
 
+describe('createSessionStore.reconnecting', () => {
+  it('tracks the reconnecting flag and clears it on disconnect', async () => {
+    const { gateway } = createGateway()
+    const store = createStore({ gateway })
+
+    await store.connect(VALID_INPUT)
+    store.getState().setReconnecting(true)
+    expect(store.getState().reconnecting).toBe(true)
+
+    store.disconnect()
+    expect(store.getState().reconnecting).toBe(false)
+
+    store.getState().setReconnecting(true)
+    await store.connect(VALID_INPUT)
+    expect(store.getState().reconnecting).toBe(false)
+  })
+})
+
 describe('createSessionStore.disconnect', () => {
   it('clears credentials, storage, and bootstrap state', async () => {
     const { gateway } = createGateway()

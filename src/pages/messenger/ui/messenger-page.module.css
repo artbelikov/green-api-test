@@ -1,6 +1,14 @@
-.shell {
+.page {
   display: flex;
+  flex-direction: column;
   height: 100dvh;
+  overflow: hidden;
+}
+
+.shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
   overflow: hidden;
 }
 
@@ -25,4 +33,20 @@
   justify-content: center;
   padding: 24px;
   color: #ffffff;
+}
+
+.reconnect {
+  flex-shrink: 0;
+  margin: 8px 12px 0;
+}
+
+@media (max-width: 768px) {
+  .listPane {
+    width: auto;
+    flex: 1;
+  }
+
+  .conversation {
+    width: 100%;
+  }
 }

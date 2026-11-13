@@ -78,15 +78,24 @@ describe('MessageBubble', () => {
 
   it('marks failed outgoing bubble with the failure affordance', () => {
     renderBubble({ ...baseMessage, direction: 'outgoing', status: 'failed' })
-    expect(screen.getByText('Hello there').parentElement).toHaveAttribute('data-failed', 'true')
+    const bubble = screen.getByText('Hello there').parentElement
+    expect(bubble).toHaveAttribute('data-failed', 'true')
+    expect(bubble).toHaveAttribute('title', i18n.chat.sendFailed)
     expect(tick('failed')).toBe('✕')
+  })
+
+  it('leaves non-failed bubbles without a failure tooltip', () => {
+    renderBubble({ ...baseMessage, direction: 'outgoing', status: 'sent' })
+    expect(screen.getByText('Hello there').parentElement).not.toHaveAttribute('title')
   })
 
   it('offers a retry action on failed outgoing bubbles and fires it on click', () => {
     const onRetry = vi.fn()
     renderBubble({ ...baseMessage, direction: 'outgoing', status: 'failed' }, onRetry)
 
-    fireEvent.click(screen.getByRole('button', { name: i18n.messenger.conversation.retryFailed }))
+    const retry = screen.getByRole('button', { name: i18n.messenger.conversation.retryFailed })
+    expect(retry).toHaveAttribute('title', i18n.messenger.conversation.retryFailed)
+    fireEvent.click(retry)
 
     expect(onRetry).toHaveBeenCalledTimes(1)
   })

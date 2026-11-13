@@ -15,6 +15,7 @@ export type NotificationEngineEvent =
       readonly error: ApiError
       readonly retryInMs: number
     }
+  | { readonly kind: 'pollRecovered' }
 
 export type NotificationEngineListener = (event: NotificationEngineEvent) => void | Promise<void>
 
@@ -268,6 +269,7 @@ export function createNotificationEngine(deps: NotificationEngineDeps): Notifica
   const runLoop = async (signal: AbortSignal, credentials: GreenApiCredentials): Promise<void> => {
     try {
       let backoffMs = initialBackoffMs
+      let degraded = false
       while (!signal.aborted) {
         let received: ReceivedNotification | null
         try {
@@ -283,12 +285,17 @@ export function createNotificationEngine(deps: NotificationEngineDeps): Notifica
             return
           }
           const failure = error instanceof ApiError ? error : ApiError.network(error)
+          degraded = true
           await emit({ kind: 'pollFailed', error: failure, retryInMs: backoffMs })
           await waitBackoff(backoffMs, signal)
           backoffMs = Math.min(backoffMs * 2, maxBackoffMs)
           continue
         }
         backoffMs = initialBackoffMs
+        if (degraded) {
+          degraded = false
+          await emit({ kind: 'pollRecovered' })
+        }
         if (received === null) {
           continue
         }

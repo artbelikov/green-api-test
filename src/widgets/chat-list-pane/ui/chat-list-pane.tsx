@@ -24,6 +24,7 @@ const SKELETON_KEYS = ['s1', 's2', 's3', 's4', 's5', 's6']
 const STATUS_COLORS = {
   connected: 'green',
   connecting: 'yellow',
+  reconnecting: 'yellow',
   disconnected: 'gray',
 } as const
 
@@ -32,6 +33,7 @@ export function ChatListPane() {
   const activeChatId = useChatsStore((state) => state.activeChatId)
   const credentials = useSessionStore((state) => state.credentials)
   const status = useSessionStore((state) => state.status)
+  const reconnecting = useSessionStore((state) => state.reconnecting)
   const settling = useSessionStore((state) => state.bootstrapPhase === 'settling')
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -49,6 +51,8 @@ export function ChatListPane() {
         )
 
   const isEmpty = summaries.length === 0
+  const chipStatus: keyof typeof STATUS_COLORS =
+    status === 'connected' && reconnecting ? 'reconnecting' : status
 
   return (
     <aside className={classes.pane}>
@@ -66,8 +70,8 @@ export function ChatListPane() {
         </ActionIcon>
       </div>
       <div className={classes.statusRow}>
-        <Badge variant="light" color={STATUS_COLORS[status]} size="sm" radius="xl">
-          {i18n.messenger.list.status[status]}
+        <Badge variant="light" color={STATUS_COLORS[chipStatus]} size="sm" radius="xl">
+          {i18n.messenger.list.status[chipStatus]}
         </Badge>
       </div>
       <TextInput

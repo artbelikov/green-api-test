@@ -1,3 +1,4 @@
+import { notifications } from '@mantine/notifications'
 import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -121,6 +122,100 @@ describe('bindChatStores', () => {
     await vi.waitFor(() => {
       expect(useChatsStore.getState().summaries[0]?.lastMessage?.status).toBe('delivered')
     })
+    unbind()
+  })
+
+  it('marks the session reconnecting while polling fails and the session stays connected', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+
+    server.use(
+      http.get(
+        `${base}/receiveNotification/${CREDENTIALS.apiTokenInstance}`,
+        () => new HttpResponse('boom', { status: 500 }),
+      ),
+    )
+    await vi.waitFor(
+      () => {
+        expect(useSessionStore.getState().reconnecting).toBe(true)
+      },
+      { timeout: 5_000 },
+    )
+    expect(useSessionStore.getState().status).toBe('connected')
+
+    server.use(
+      http.get(`${base}/receiveNotification/${CREDENTIALS.apiTokenInstance}`, () =>
+        HttpResponse.json(null),
+      ),
+    )
+    await vi.waitFor(
+      () => {
+        expect(useSessionStore.getState().reconnecting).toBe(false)
+      },
+      { timeout: 5_000 },
+    )
+    expect(useSessionStore.getState().status).toBe('connected')
+    unbind()
+  })
+
+  it('toasts incoming messages for background chats without clearing the unread badge', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+    const showSpy = vi.spyOn(notifications, 'show')
+    useChatsStore.setState({ activeChatId: 'chat-other' })
+
+    mockGateway.deliverNotification(incomingEnvelope('m1', 'hello from the background', 'Дейл'))
+
+    await vi.waitFor(() => {
+      expect(showSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Дейл',
+          message: 'hello from the background',
+        }),
+      )
+    })
+    expect(useChatsStore.getState().summaries[0]).toMatchObject({
+      unread: 1,
+      lastMessage: { id: 'm1' },
+    })
+    showSpy.mockRestore()
+    unbind()
+  })
+
+  it('truncates toast previews of long incoming texts', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+    const showSpy = vi.spyOn(notifications, 'show')
+    useChatsStore.setState({ activeChatId: 'chat-other' })
+    const longText = 'x'.repeat(200)
+
+    mockGateway.deliverNotification(incomingEnvelope('m1', longText, 'Дейл'))
+
+    await vi.waitFor(() => {
+      expect(showSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringMatching(/^x{120}…$/),
+        }),
+      )
+    })
+    showSpy.mockRestore()
+    unbind()
+  })
+
+  it('does not toast messages arriving in the open chat', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+    const showSpy = vi.spyOn(notifications, 'show')
+    useChatsStore.setState({ activeChatId: 'chat-1' })
+
+    mockGateway.deliverNotification(incomingEnvelope('m1', 'reply while open', 'Дейл'))
+
+    await vi.waitFor(() => {
+      expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(1)
+    })
+    expect(showSpy).not.toHaveBeenCalled()
+    expect(useChatsStore.getState().summaries[0]).toMatchObject({ unread: 0 })
+    showSpy.mockRestore()
     unbind()
   })
 

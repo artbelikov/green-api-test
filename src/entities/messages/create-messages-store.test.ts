@@ -251,6 +251,19 @@ describe('createMessagesStore — live events', () => {
     expect(store.getState().byChat['chat-1']?.[0]?.status).toBe('failed')
   })
 
+  it('escalates a pending bubble through the mandatory sent status event', () => {
+    const store = createStore()
+    const pendingId = store.getState().appendPending('chat-1', 'queued')
+    expect(store.getState().byChat['chat-1']?.[0]?.status).toBe('pending')
+
+    expect(
+      store
+        .getState()
+        .applyStatusEvent(createLiveStatusEvent({ idMessage: pendingId, status: 'sent' })),
+    ).toBe(true)
+    expect(store.getState().byChat['chat-1']?.[0]?.status).toBe('sent')
+  })
+
   it('ignores statuses for unknown messages and incoming messages', () => {
     const store = createStore()
     store

@@ -340,7 +340,7 @@ describe('notification engine failure handling', () => {
     const retrySequence = events.map((event) =>
       event.kind === 'pollFailed' ? event.retryInMs : event.kind,
     )
-    expect(retrySequence).toEqual([1_000, 2_000, 'message', 1_000])
+    expect(retrySequence).toEqual([1_000, 2_000, 'pollRecovered', 'message', 1_000])
     const firstFailure = events[0]
     expect(firstFailure?.kind).toBe('pollFailed')
     if (firstFailure?.kind === 'pollFailed') {
@@ -386,6 +386,41 @@ describe('notification engine failure handling', () => {
       )
       .map((event) => event.retryInMs)
     expect(retries).toEqual([1_000, 2_000, 3_000, 3_000])
+
+    await engine.stop()
+    unsubscribe()
+  })
+
+  it('emits pollRecovered once when polling succeeds after a failure', async () => {
+    const gateway = new FakeNotificationGateway([
+      { kind: 'null' },
+      { kind: 'fail', error: networkFailure },
+      { kind: 'null' },
+      { kind: 'null' },
+      { kind: 'block' },
+    ])
+    const scheduler = new ManualScheduler()
+    const events: NotificationEngineEvent[] = []
+    const engine = createNotificationEngine({ gateway, scheduler })
+    const unsubscribe = engine.subscribe((event) => {
+      events.push(event)
+    })
+
+    engine.start(CREDENTIALS)
+    await vi.waitFor(() => {
+      expect(scheduler.pendingDelays()).toEqual([1_000])
+    })
+    expect(events).toHaveLength(1)
+
+    scheduler.flushNext()
+    await vi.waitFor(() => {
+      expect(events).toHaveLength(2)
+    })
+    expect(events.map((event) => event.kind)).toEqual(['pollFailed', 'pollRecovered'])
+    await vi.waitFor(() => {
+      expect(gateway.receiveCalls).toBeGreaterThanOrEqual(4)
+    })
+    expect(events).toHaveLength(2)
 
     await engine.stop()
     unsubscribe()
@@ -804,5 +839,6 @@ describe('notification engine over the real facade gateway (MSW)', () => {
     unsubscribe()
 
     expect(events.filter((event) => event.kind === 'pollFailed')).toHaveLength(2)
+    expect(events.some((event) => event.kind === 'pollRecovered')).toBe(true)
   })
 })

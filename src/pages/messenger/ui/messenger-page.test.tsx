@@ -47,6 +47,24 @@ const renderPage = (): void => {
   )
 }
 
+const stubMatchMedia = (matches: boolean): void => {
+  window.matchMedia = (query: string): MediaQueryList =>
+    ({
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }) as MediaQueryList
+}
+
+afterEach(() => {
+  stubMatchMedia(false)
+})
+
 describe('MessengerPage', () => {
   it('renders the rail, the chat list pane, and the conversation placeholder', async () => {
     useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
@@ -88,5 +106,28 @@ describe('MessengerPage', () => {
     renderPage()
 
     expect(screen.getByText(i18n.messenger.conversation.placeholder)).toBeInTheDocument()
+  })
+
+  it('shows the reconnect banner while the session is degraded', () => {
+    useSessionStore.setState({
+      credentials: CREDENTIALS,
+      status: 'connected',
+      reconnecting: true,
+    })
+
+    renderPage()
+
+    expect(screen.getByRole('status')).toHaveTextContent(i18n.messenger.list.reconnectBanner)
+  })
+
+  it('hides the rail when the mobile viewport is active', () => {
+    stubMatchMedia(true)
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+
+    renderPage()
+
+    expect(
+      screen.queryByRole('navigation', { name: i18n.messenger.navRail.label }),
+    ).not.toBeInTheDocument()
   })
 })

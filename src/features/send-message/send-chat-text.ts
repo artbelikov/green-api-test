@@ -12,7 +12,7 @@ export type SendTextOutcome =
 const showSendFailureToast = (): void => {
   notifications.show({
     color: 'red',
-    message: i18n.chat.sendFailedToast,
+    message: i18n.chat.sendFailed,
     withCloseButton: true,
   })
 }
