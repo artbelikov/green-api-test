@@ -13,6 +13,7 @@ export interface Chat {
 const normalizeChatType = (raw: string | undefined): ChatType => {
   switch (raw) {
     case 'user':
+    case 'bot':
       return 'private'
     case 'supergroup':
     case 'group':
@@ -22,6 +23,19 @@ const normalizeChatType = (raw: string | undefined): ChatType => {
     default:
       return 'unknown'
   }
+}
+
+const normalizeUsername = (raw: string | undefined): string | null =>
+  raw === undefined ? null : raw.replace(/^@+/, '')
+
+const normalizePhoneNumber = (raw: string | number | undefined): string | null => {
+  if (typeof raw === 'number') {
+    return raw === 0 ? null : String(raw)
+  }
+  if (raw === undefined || raw.length === 0) {
+    return null
+  }
+  return raw
 }
 
 const resolveName = (...candidates: ReadonlyArray<string | undefined>): string =>
@@ -36,8 +50,8 @@ export function mapChatListItem(raw: GreenApiChatListItem): Chat | null {
     id,
     name: resolveName(raw.name, raw.contactName, id),
     type: normalizeChatType(raw.type),
-    username: raw.username ?? null,
-    phone: raw.phoneNumber ?? null,
+    username: normalizeUsername(raw.username),
+    phone: normalizePhoneNumber(raw.phoneNumber),
   }
 }
 
@@ -53,7 +67,7 @@ export function mapContactInfo(raw: GreenApiContactInfo, fallback: ContactInfoFa
     id,
     name: resolveName(raw.name, raw.contactName, fallback.name, id),
     type: normalizeChatType(raw.chatType),
-    username: raw.username ?? null,
+    username: normalizeUsername(raw.username),
     phone: null,
   }
 }

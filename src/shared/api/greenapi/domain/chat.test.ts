@@ -43,6 +43,23 @@ describe('mapChatListItem', () => {
     expect(mapChatListItem({ chatId: '1203', type: 'something-new' })?.type).toBe('unknown')
   })
 
+  it('maps a bot counterpart as a private chat with the at-stripped handle', () => {
+    const raw: GreenApiChatListItem = {
+      chatId: '9144415711',
+      name: 'my-dev-debug-bot',
+      type: 'bot',
+      phoneNumber: 0,
+      username: '@GreenAPITestBot',
+    }
+    expect(mapChatListItem(raw)).toEqual({
+      id: '9144415711',
+      name: 'my-dev-debug-bot',
+      type: 'private',
+      username: 'GreenAPITestBot',
+      phone: null,
+    })
+  })
+
   it('falls back the name to the chat id and rejects entries without an id', () => {
     expect(mapChatListItem({ chatId: '7916', type: 'user' })).toEqual({
       id: '7916',
@@ -69,6 +86,30 @@ describe('mapContactInfo', () => {
       name: 'Иван',
       type: 'private',
       username: 'ivan',
+      phone: null,
+    })
+  })
+
+  it('resolves a bot nickname to its canonical id with the at-stripped handle', () => {
+    const raw: GreenApiContactInfo = {
+      avatar: '',
+      name: 'my-dev-debug-bot',
+      contactName: '',
+      chatId: '9144415711',
+      chatType: 'bot',
+      lastSeen: 0,
+      phoneNumber: 0,
+      username: '@greenapitestbot',
+      isPremium: false,
+      isVerified: false,
+      isScam: false,
+      description: '',
+    }
+    expect(mapContactInfo(raw, { chatId: '@GreenAPITestBot', name: '@GreenAPITestBot' })).toEqual({
+      id: '9144415711',
+      name: 'my-dev-debug-bot',
+      type: 'private',
+      username: 'greenapitestbot',
       phone: null,
     })
   })

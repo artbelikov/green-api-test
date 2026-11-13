@@ -28,7 +28,7 @@ export interface GreenApiChatListItem {
   readonly contactName?: string
   readonly type?: string
   readonly username?: string
-  readonly phoneNumber?: string
+  readonly phoneNumber?: string | number
   readonly unreadCount?: number
   readonly archive?: boolean
 }
@@ -48,9 +48,15 @@ export interface GreenApiContactInfo {
   readonly username?: string
   readonly avatar?: string
   readonly chatType?: string
-  readonly lastSeen?: string
+  readonly lastSeen?: string | number
   readonly email?: string
   readonly isBusiness?: boolean
+  readonly phoneNumber?: string | number
+  readonly phoneNumberTimestamp?: number
+  readonly isPremium?: boolean
+  readonly isVerified?: boolean
+  readonly isScam?: boolean
+  readonly description?: string
 }
 
 export interface GreenApiAvatar {
