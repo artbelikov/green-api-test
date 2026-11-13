@@ -1,4 +1,5 @@
 import { ActionIcon, Button, Skeleton, Stack, Text, Title, useMantineTheme } from '@mantine/core'
+import { IconArrowDown, IconChevronLeft } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { UIEvent } from 'react'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -112,7 +113,7 @@ export function ConversationPane({ chat, isMobile, onBack }: ConversationPanePro
             aria-label={i18n.messenger.conversation.backAction}
             onClick={onBack}
           >
-            ‹
+            <IconChevronLeft size={20} aria-hidden />
           </ActionIcon>
         ) : null}
         <ChatAvatarWithUrl chatId={chat.id} name={chat.name} size={40} credentials={credentials} />
@@ -216,7 +217,7 @@ export function ConversationPane({ chat, isMobile, onBack }: ConversationPanePro
           })
         }}
       >
-        ↓
+        <IconArrowDown size={20} aria-hidden />
       </ActionIcon>
     </Wallpaper>
   )

@@ -9,6 +9,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core'
+import { IconPlus } from '@tabler/icons-react'
 import { useState } from 'react'
 import { ChatAvatarWithUrl, ChatRow } from '@/entities/chat'
 import { useChatsStore } from '@/entities/chats'
@@ -66,18 +67,7 @@ export function ChatListPane() {
           aria-label={i18n.messenger.list.newChatAction}
           onClick={() => setModalOpen(true)}
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.4}
-            strokeLinecap="round"
-            aria-hidden
-            className={classes.fabIcon}
-          >
-            <path d="M12 5v14" />
-            <path d="M5 12h14" />
-          </svg>
+          <IconPlus className={classes.fabIcon} aria-hidden />
         </ActionIcon>
       </div>
       <div className={classes.statusRow}>

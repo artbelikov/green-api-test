@@ -1,4 +1,5 @@
 import { ActionIcon, type CSSProperties, useMantineTheme } from '@mantine/core'
+import { IconRotateClockwise2 } from '@tabler/icons-react'
 import type { MessageDeliveryStatus, MessageDirection } from '@/shared/api/greenapi'
 import { i18n } from '@/shared/config'
 import { formatMessageTime } from '@/shared/lib'
@@ -47,7 +48,7 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
               title={i18n.messenger.conversation.retryFailed}
               onClick={onRetry}
             >
-              ↻
+              <IconRotateClockwise2 size={14} aria-hidden />
             </ActionIcon>
           ) : null}
           {outgoing && message.status !== null ? <StatusTicks status={message.status} /> : null}

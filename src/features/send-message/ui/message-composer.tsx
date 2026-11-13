@@ -1,4 +1,5 @@
 import { ActionIcon } from '@mantine/core'
+import { IconMicrophone, IconSend } from '@tabler/icons-react'
 import type { KeyboardEvent } from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useSessionStore } from '@/entities/session'
@@ -6,33 +7,6 @@ import { i18n } from '@/shared/config'
 import { MAX_SEND_TEXT_LENGTH, validateSendText } from '../lib/validate-send-text'
 import { sendChatText } from '../send-chat-text'
 import classes from './message-composer.module.css'
-
-const glyphProps = {
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 2,
-  strokeLinecap: 'round',
-  strokeLinejoin: 'round',
-  'aria-hidden': true,
-} as const
-
-const MicGlyph = () => (
-  <svg {...glyphProps}>
-    <title>{i18n.messenger.composer.micTitle}</title>
-    <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-    <path d="M19 11a7 7 0 0 1-14 0" />
-    <path d="M12 18v4" />
-  </svg>
-)
-
-const SendGlyph = () => (
-  <svg {...glyphProps}>
-    <title>{i18n.messenger.composer.sendAction}</title>
-    <path d="m22 2-7 20-4-9-9-4z" />
-    <path d="M22 2 11 13" />
-  </svg>
-)
 
 export interface MessageComposerProps {
   readonly chatId: string
@@ -104,11 +78,11 @@ export function MessageComposer({ chatId }: MessageComposerProps) {
           title={offline ? i18n.messenger.composer.offlineTooltip : undefined}
           aria-label={i18n.messenger.composer.sendAction}
         >
-          <SendGlyph />
+          <IconSend size={20} aria-hidden />
         </ActionIcon>
       ) : (
-        <span className={classes.mic} aria-hidden="true">
-          <MicGlyph />
+        <span className={classes.mic} aria-hidden="true" title={i18n.messenger.composer.micTitle}>
+          <IconMicrophone size={22} />
         </span>
       )}
     </form>
