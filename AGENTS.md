@@ -5,13 +5,13 @@ This is a test task for a job application (GREEN-API, React frontend). **Code qu
 ## Read before starting (mandatory)
 
 1. `AGENTS.md` (this file)
-2. `docs/PROGRESS.md` — current task statuses, handoff block, decisions D1–D7
+2. `docs/PROGRESS.md` — current task statuses, handoff block, condensed decisions index (D-numbers are stable anchors); keep entries terse
 3. `docs/PLAN.md` — architecture, UI spec, verified API facts (§2 is authoritative over external docs when they conflict)
 4. The current task spec in `docs/TASKS.md` (T0–T11)
 
 ## Update before ending (mandatory)
 
-- `docs/PROGRESS.md`: flip task status, rewrite the **Current handoff** block, append the **Session log** row, append any new **Decisions & gotchas**.
+- `docs/PROGRESS.md`: flip task status, rewrite the **Current handoff** block, append a one-line **Session log** row and a one-line **Decisions & gotchas** entry; keep the page terse.
 - `README.md` if setup/scripts/architecture/deployment claims changed.
 - Keep append-only log sections intact; never rewrite past entries.
 

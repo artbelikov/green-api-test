@@ -93,26 +93,33 @@ export class RateQueue {
     }
     slot.running = true
     void (async () => {
-      while (slot.entries.length > 0) {
-        const jitterFactor = 1 + this.#clock.random() * this.#jitterRatio
-        const minimumGapMs = 1000 / slot.limit
-        const targetStart = slot.lastRun + minimumGapMs * jitterFactor
-        const delayMs = targetStart - this.#clock.now()
-        if (delayMs > 0) {
-          await waitFor(this.#clock, delayMs)
+      try {
+        while (slot.entries.length > 0) {
+          const jitterFactor = 1 + this.#clock.random() * this.#jitterRatio
+          const minimumGapMs = 1000 / slot.limit
+          const targetStart = slot.lastRun + minimumGapMs * jitterFactor
+          const delayMs = targetStart - this.#clock.now()
+          if (delayMs > 0) {
+            await waitFor(this.#clock, delayMs)
+          }
+          const entry = this.#pickNext(slot)
+          if (entry === undefined) {
+            break
+          }
+          try {
+            slot.lastRun = this.#clock.now()
+            entry.resolve(await entry.task())
+          } catch (error) {
+            entry.reject(error)
+          }
         }
-        const entry = this.#pickNext(slot)
-        if (entry === undefined) {
-          break
+      } catch (error) {
+        for (const queued of slot.entries.splice(0)) {
+          queued.reject(error)
         }
-        try {
-          slot.lastRun = this.#clock.now()
-          entry.resolve(await entry.task())
-        } catch (error) {
-          entry.reject(error)
-        }
+      } finally {
+        slot.running = false
       }
-      slot.running = false
     })()
   }
 

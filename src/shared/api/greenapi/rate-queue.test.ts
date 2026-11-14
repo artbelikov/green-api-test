@@ -53,6 +53,31 @@ const settle = async (rounds = 4): Promise<void> => {
   }
 }
 
+class FailingScheduleClock implements Clock {
+  broken = false
+
+  #inner = new ManualClock()
+
+  now(): number {
+    return this.#inner.now()
+  }
+
+  random(): number {
+    return this.#inner.random()
+  }
+
+  schedule(delayMs: number, run: () => void): void {
+    if (this.broken) {
+      throw new Error('schedule failed')
+    }
+    this.#inner.schedule(delayMs, run)
+  }
+
+  advance(ms: number): void {
+    this.#inner.advance(ms)
+  }
+}
+
 describe('RateQueue', () => {
   it('runs the first task of a method immediately', async () => {
     const clock = new ManualClock()
@@ -315,5 +340,31 @@ describe('RateQueue', () => {
     await settle()
     await expect(background).resolves.toBe('background')
     expect(startTimes).toEqual(['running:0', 'user:1000', 'background:2000'])
+  })
+
+  it('fails fast queued entries when the clock scheduler breaks and recovers', async () => {
+    const clock = new FailingScheduleClock()
+    const queue = new RateQueue({ history: 1 }, { clock })
+
+    const first = queue.enqueue('history', async () => 'first')
+    await settle()
+    await expect(first).resolves.toBe('first')
+
+    clock.broken = true
+    const queuedA = queue.enqueue('history', async () => 'queued-a')
+    const queuedB = queue.enqueue('history', async () => 'queued-b')
+    await expect(queuedA).rejects.toThrow('schedule failed')
+    await expect(queuedB).rejects.toThrow('schedule failed')
+
+    clock.broken = false
+    const recoveredA = queue.enqueue('history', async () => 'recovered-a')
+    await settle()
+    const recoveredB = queue.enqueue('history', async () => 'recovered-b')
+    clock.advance(1000)
+    await settle()
+    await expect(recoveredA).resolves.toBe('recovered-a')
+    clock.advance(1000)
+    await settle()
+    await expect(recoveredB).resolves.toBe('recovered-b')
   })
 })

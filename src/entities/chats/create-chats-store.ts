@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Chat, Message } from '@/shared/api/greenapi'
+import type { Chat, GreenApiCredentials, Message } from '@/shared/api/greenapi'
 import { escalatesDeliveryStatus } from '@/shared/api/greenapi'
 import {
   createPersistThrottle,
@@ -29,6 +29,8 @@ export type ChatsState = {
   applyStatusUpdate(update: ChatStatusUpdateInput): void
   openChat(chatId: string): void
   closeChat(): void
+  claimPreviewAttempt(chatId: string, credentials: GreenApiCredentials): boolean
+  discardPreviewAttempt(chatId: string): void
   clear(): void
 }
 
@@ -129,6 +131,9 @@ export function createChatsStore(deps: ChatsStoreDeps) {
       set({ summaries: next })
       persistThrottle.schedule()
     }
+
+    let previewAttemptSession: GreenApiCredentials | null = null
+    const previewAttempts = new Set<string>()
 
     return {
       summaries: sortSummaries(persistedSummaries),
@@ -238,9 +243,27 @@ export function createChatsStore(deps: ChatsStoreDeps) {
         set({ activeChatId: null })
       },
 
+      claimPreviewAttempt(chatId, credentials) {
+        if (previewAttemptSession !== credentials) {
+          previewAttempts.clear()
+          previewAttemptSession = credentials
+        }
+        if (previewAttempts.has(chatId)) {
+          return false
+        }
+        previewAttempts.add(chatId)
+        return true
+      },
+
+      discardPreviewAttempt(chatId) {
+        previewAttempts.delete(chatId)
+      },
+
       clear() {
         persistThrottle.cancel()
         deps.storage.remove(CHATS_STORAGE_KEY)
+        previewAttempts.clear()
+        previewAttemptSession = null
         set({ summaries: [], activeChatId: null })
       },
     }

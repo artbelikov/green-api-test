@@ -410,4 +410,48 @@ describe('createChatsStore', () => {
 
     expect(storage.read('green-api-messenger:chats:v1')).toBeNull()
   })
+
+  it('allows one preview attempt per chat per credentials session', () => {
+    const { storage, now } = memory()
+    const store = createChatsStore({ storage, now })
+    const credentials = {
+      apiUrl: 'https://gateway.test',
+      idInstance: '110100200',
+      apiTokenInstance: 'token-a',
+    }
+
+    expect(store.getState().claimPreviewAttempt('111', credentials)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', credentials)).toBe(false)
+    expect(store.getState().claimPreviewAttempt('222', credentials)).toBe(true)
+  })
+
+  it('re-attempts a chat when the credentials session changes', () => {
+    const { storage, now } = memory()
+    const store = createChatsStore({ storage, now })
+    const first = {
+      apiUrl: 'https://gateway.test',
+      idInstance: '110100200',
+      apiTokenInstance: 'token-a',
+    }
+    const second = { ...first, apiTokenInstance: 'token-b' }
+
+    expect(store.getState().claimPreviewAttempt('111', first)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', first)).toBe(false)
+    expect(store.getState().claimPreviewAttempt('111', second)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', first)).toBe(true)
+  })
+
+  it('clear() resets preview attempts and the session key', () => {
+    const { storage, now } = memory()
+    const store = createChatsStore({ storage, now })
+    const credentials = {
+      apiUrl: 'https://gateway.test',
+      idInstance: '110100200',
+      apiTokenInstance: 'token-a',
+    }
+
+    expect(store.getState().claimPreviewAttempt('111', credentials)).toBe(true)
+    store.getState().clear()
+    expect(store.getState().claimPreviewAttempt('111', credentials)).toBe(true)
+  })
 })

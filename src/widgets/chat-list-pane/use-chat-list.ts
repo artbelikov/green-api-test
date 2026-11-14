@@ -14,26 +14,18 @@ import {
 const LIST_STALE_TIME_MS = 30_000
 const PREVIEW_HISTORY_COUNT = 1
 
-let previewCredentialsSession: GreenApiCredentials | null = null
-const previewAttempts = new Set<string>()
-
 const hydrateVisiblePreviews = async (
   credentials: GreenApiCredentials,
   chatIds: readonly string[],
 ): Promise<void> => {
-  if (credentials !== previewCredentialsSession) {
-    previewAttempts.clear()
-    previewCredentialsSession = credentials
-  }
   for (const chatId of chatIds) {
-    if (previewAttempts.has(chatId)) {
+    if (!useChatsStore.getState().claimPreviewAttempt(chatId, credentials)) {
       continue
     }
     const summary = useChatsStore.getState().summaries.find((entry) => entry.id === chatId)
     if (summary?.lastMessage !== null || useSessionStore.getState().credentials !== credentials) {
       continue
     }
-    previewAttempts.add(chatId)
     try {
       const history = await getChatHistory(credentials, {
         chatId,
@@ -49,7 +41,7 @@ const hydrateVisiblePreviews = async (
           .applyNewMessage({ message: latest, fallbackName: null, markUnread: false })
       }
     } catch {
-      previewAttempts.delete(chatId)
+      useChatsStore.getState().discardPreviewAttempt(chatId)
     }
   }
 }
