@@ -17,7 +17,7 @@ export function ConnectPage() {
           <Title order={1} ta="center">
             {i18n.connect.heading}
           </Title>
-          <Text c="dimmed" ta="center">
+          <Text c="dimmed" ta="center" w="70%">
             {i18n.connect.subtitle}
           </Text>
           <ConnectForm />
