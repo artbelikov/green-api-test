@@ -13,9 +13,9 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { useMemo, useRef, useState } from 'react'
 import { ChatAvatarWithUrl, ChatRow } from '@/entities/chat'
 import { useChatsStore } from '@/entities/chats'
-import { useSessionStore } from '@/entities/session'
 import { openChat } from '@/features/open-chat'
 import { NewChatModal } from '@/features/pick-chat'
+import type { GreenApiCredentials } from '@/shared/api/greenapi'
 import { i18n } from '@/shared/config'
 import { useChatListHydration, useChatPreviewHydration } from '../use-chat-list'
 import classes from './chat-list-pane.module.css'
@@ -31,10 +31,13 @@ const CONTENT_STATE_STYLE = {
   minHeight: '100%',
 } as const
 
-export function ChatListPane() {
+export type ChatListPaneProps = {
+  readonly credentials: GreenApiCredentials
+}
+
+export function ChatListPane({ credentials }: ChatListPaneProps) {
   const summaries = useChatsStore((state) => state.summaries)
   const activeChatId = useChatsStore((state) => state.activeChatId)
-  const credentials = useSessionStore((state) => state.credentials)
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const { loading } = useChatListHydration()

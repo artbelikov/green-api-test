@@ -1,27 +1,18 @@
 import { Button, Divider, Group, Modal, Stack, Text } from '@mantine/core'
 import { useSessionStore } from '@/entities/session'
+import type { GreenApiCredentials } from '@/shared/api/greenapi'
 import { i18n } from '@/shared/config'
 
 export type SettingsModalProps = {
   readonly opened: boolean
   readonly onClose: () => void
+  readonly credentials: GreenApiCredentials
 }
 
-export function SettingsModal({ opened, onClose }: SettingsModalProps) {
-  const credentials = useSessionStore((state) => state.credentials)
+export function SettingsModal({ opened, onClose, credentials }: SettingsModalProps) {
   const status = useSessionStore((state) => state.status)
   const reconnecting = useSessionStore((state) => state.reconnecting)
   const disconnect = useSessionStore((state) => state.disconnect)
-
-  if (credentials === null) {
-    return (
-      <Modal opened={opened} onClose={onClose} title={i18n.sessionSettings.title} centered>
-        <Text c="dimmed" size="sm">
-          {i18n.sessionSettings.errors.notConnected}
-        </Text>
-      </Modal>
-    )
-  }
 
   const statusKey = status === 'connected' && reconnecting ? 'reconnecting' : status
   const statusText = i18n.messenger.list.status[statusKey]

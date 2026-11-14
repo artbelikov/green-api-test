@@ -4,7 +4,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { useSessionStore } from '@/entities/session'
 import type { GreenApiCredentials } from '@/shared/api/greenapi'
 import { maxTheme } from '@/shared/config'
 import { handlers, mockGateway } from '@/shared/mocks'
@@ -44,14 +43,13 @@ afterEach(() => {
   server.resetHandlers()
   mockGateway.reset()
   window.localStorage.clear()
-  useSessionStore.getState().disconnect()
 })
 
 afterAll(() => {
   server.close()
 })
 
-const renderAvatar = (credentials: GreenApiCredentials | null): void => {
+const renderAvatar = (credentials: GreenApiCredentials): void => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -73,20 +71,12 @@ const FIND_OPTIONS = { timeout: 3000 }
 
 describe('ChatAvatarWithUrl', () => {
   it('falls back to initials when getAvatar has no available url', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
-
     renderAvatar(CREDENTIALS)
 
     expect(await screen.findByText('DC', {}, FIND_OPTIONS)).toBeInTheDocument()
   })
 
-  it('skips the query and shows initials without a session', () => {
-    renderAvatar(null)
-    expect(screen.getByText('DC')).toBeInTheDocument()
-  })
-
   it('recovers with initials when the avatar request fails', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
     server.use(http.post(/\/getAvatar\/[^/?]+$/, () => new HttpResponse(null, { status: 500 })))
 
     renderAvatar(CREDENTIALS)
@@ -95,7 +85,6 @@ describe('ChatAvatarWithUrl', () => {
   })
 
   it('does not reuse an avatar cached under another instance credentials', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
     let avatarUrl = 'https://avatar.test/one.png'
     const fetchPaths: string[] = []
     server.use(
@@ -142,7 +131,6 @@ describe('ChatAvatarWithUrl', () => {
   })
 
   it('collapses a quota-exhausted instance into initials after one request', async () => {
-    useSessionStore.setState({ credentials: QUOTA_CREDENTIALS, status: 'connected' })
     let avatarRequests = 0
     server.use(
       http.post(/\/getAvatar\/[^/?]+$/, () => {
@@ -192,7 +180,6 @@ describe('ChatAvatarWithUrl', () => {
   })
 
   it('keeps the avatar quota trip scoped to one instance', async () => {
-    useSessionStore.setState({ credentials: THIRD_CREDENTIALS, status: 'connected' })
     let avatarRequests = 0
     const otherAvatarUrl = 'https://avatar.test/other.png'
     server.use(

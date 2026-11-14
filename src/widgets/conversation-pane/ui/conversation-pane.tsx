@@ -16,9 +16,9 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ChatAvatarWithUrl } from '@/entities/chat'
 import { DateDivider, MessageBubble } from '@/entities/message'
 import { selectChatMessages, useMessagesStore } from '@/entities/messages'
-import { useSessionStore } from '@/entities/session'
 import { openChat } from '@/features/open-chat'
 import { MessageComposer, retryChatText } from '@/features/send-message'
+import type { GreenApiCredentials } from '@/shared/api/greenapi'
 import { i18n } from '@/shared/config'
 import { Wallpaper } from '@/shared/ui'
 import { buildConversationRows } from '../lib/conversation-rows'
@@ -57,15 +57,15 @@ export type ConversationPaneProps = {
   readonly chat: ConversationChat
   readonly isMobile: boolean
   readonly onBack: () => void
+  readonly credentials: GreenApiCredentials
 }
 
 const estimateRowHeight = (textLength: number, hardLines: number): number =>
   BUBBLE_ROW_BASE +
   Math.max(hardLines, Math.ceil(textLength / ESTIMATED_CHARS_PER_LINE)) * MESSAGE_LINE_HEIGHT
 
-export function ConversationPane({ chat, isMobile, onBack }: ConversationPaneProps) {
+export function ConversationPane({ chat, isMobile, onBack, credentials }: ConversationPaneProps) {
   const { max } = useMantineTheme().other
-  const credentials = useSessionStore((state) => state.credentials)
   const messages = useMessagesStore((state) => selectChatMessages(state, chat.id))
   const historyPhase = useMessagesStore((state) => state.history[chat.id] ?? 'ready')
   const nowMs = useReactiveNow()

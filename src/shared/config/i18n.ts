@@ -75,9 +75,6 @@ export const i18n = {
     instanceIdLabel: 'Instance ID',
     statusLabel: 'Connection',
     disconnectAction: 'Disconnect',
-    errors: {
-      notConnected: 'You are not connected to an instance.',
-    },
   },
   newChat: {
     title: 'New chat',

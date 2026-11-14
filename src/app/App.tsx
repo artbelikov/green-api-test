@@ -21,8 +21,10 @@ const RestoreScreen = () => (
 )
 
 function App() {
-  const status = useSessionStore((state) => state.status)
   const sessionResolved = useSessionStore((state) => state.sessionResolved)
+  const credentials = useSessionStore((state) =>
+    state.status === 'connected' ? state.credentials : null,
+  )
 
   useEffect(() => {
     void useSessionStore.getState().resume()
@@ -33,14 +35,16 @@ function App() {
 
   return (
     <AppProvider>
-      {status === 'connected' ? (
-        <Suspense fallback={i18n.app.loading}>
-          <MessengerPage />
-        </Suspense>
-      ) : sessionResolved ? (
-        <ConnectPage />
+      {credentials === null ? (
+        sessionResolved ? (
+          <ConnectPage />
+        ) : (
+          <RestoreScreen />
+        )
       ) : (
-        <RestoreScreen />
+        <Suspense fallback={i18n.app.loading}>
+          <MessengerPage credentials={credentials} />
+        </Suspense>
       )}
     </AppProvider>
   )

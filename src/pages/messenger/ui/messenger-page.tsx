@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { selectActiveChatSummary, useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
 import { SettingsModal } from '@/features/session-settings'
+import type { GreenApiCredentials } from '@/shared/api/greenapi'
 import { i18n } from '@/shared/config'
 import { Wallpaper } from '@/shared/ui'
 import { ChatListPane } from '@/widgets/chat-list-pane'
@@ -13,7 +14,11 @@ import classes from './messenger-page.module.css'
 
 const MOBILE_QUERY = '(max-width: 768px)'
 
-export function MessengerPage() {
+export type MessengerPageProps = {
+  readonly credentials: GreenApiCredentials
+}
+
+export function MessengerPage({ credentials }: MessengerPageProps) {
   const activeChatId = useChatsStore((state) => state.activeChatId)
   const activeChat = useChatsStore((state) => selectActiveChatSummary(state))
   const closeChat = useChatsStore((state) => state.closeChat)
@@ -55,7 +60,7 @@ export function MessengerPage() {
         {!isMobile ? <NavRail active={activeSection} onSelect={handleSectionSelect} /> : null}
         {showList ? (
           <div className={classes.listPane}>
-            <ChatListPane />
+            <ChatListPane credentials={credentials} />
           </div>
         ) : null}
         {showConversation ? (
@@ -66,6 +71,7 @@ export function MessengerPage() {
                 chat={activeChat}
                 isMobile={isMobile}
                 onBack={closeChat}
+                credentials={credentials}
               />
             ) : (
               <Wallpaper
@@ -84,7 +90,11 @@ export function MessengerPage() {
           </section>
         ) : null}
       </div>
-      <SettingsModal opened={settingsOpen} onClose={handleSettingsClose} />
+      <SettingsModal
+        opened={settingsOpen}
+        onClose={handleSettingsClose}
+        credentials={credentials}
+      />
     </div>
   )
 }

@@ -14,37 +14,32 @@ export type ChatAvatarWithUrlProps = {
   readonly chatId: string
   readonly name: string
   readonly size: number
-  readonly credentials: GreenApiCredentials | null
+  readonly credentials: GreenApiCredentials
 }
 
 export function ChatAvatarWithUrl({ chatId, name, size, credentials }: ChatAvatarWithUrlProps) {
-  const sessionKey = credentials === null ? null : credentialsFingerprint(credentials)
+  const sessionKey = credentialsFingerprint(credentials)
   const query = useQuery({
     queryKey: ['chat-avatar', chatId, sessionKey],
-    queryFn:
-      credentials === null
-        ? (): Promise<string | null> => Promise.resolve(null)
-        : async (): Promise<string | null> => {
-            const fingerprint = credentialsFingerprint(credentials)
-            if (avatarQuotaGate.isTripped(fingerprint)) {
-              return null
-            }
-            try {
-              const avatar = await getAvatar(credentials, chatId)
-              if (avatar.available === false) {
-                return null
-              }
-              const url = avatar.urlAvatar ?? avatar.base64Avatar
-              return typeof url === 'string' && url.length > 0 ? url : null
-            } catch (error) {
-              if (!isQuotaExceededError(error)) {
-                throw error
-              }
-              avatarQuotaGate.trip(fingerprint)
-              return null
-            }
-          },
-    enabled: credentials !== null,
+    queryFn: async (): Promise<string | null> => {
+      if (avatarQuotaGate.isTripped(sessionKey)) {
+        return null
+      }
+      try {
+        const avatar = await getAvatar(credentials, chatId)
+        if (avatar.available === false) {
+          return null
+        }
+        const url = avatar.urlAvatar ?? avatar.base64Avatar
+        return typeof url === 'string' && url.length > 0 ? url : null
+      } catch (error) {
+        if (!isQuotaExceededError(error)) {
+          throw error
+        }
+        avatarQuotaGate.trip(sessionKey)
+        return null
+      }
+    },
     staleTime: AVATAR_STALE_TIME_MS,
     retry: false,
   })

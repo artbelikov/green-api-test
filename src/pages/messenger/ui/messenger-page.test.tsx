@@ -42,7 +42,7 @@ const renderPage = (): void => {
   render(
     <QueryClientProvider client={queryClient}>
       <MantineProvider theme={maxTheme}>
-        <MessengerPage />
+        <MessengerPage credentials={CREDENTIALS} />
       </MantineProvider>
     </QueryClientProvider>,
   )

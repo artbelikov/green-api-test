@@ -63,7 +63,7 @@ const renderPane = (): void => {
   render(
     <QueryClientProvider client={queryClient}>
       <MantineProvider>
-        <ChatListPane />
+        <ChatListPane credentials={CREDENTIALS} />
       </MantineProvider>
     </QueryClientProvider>,
   )

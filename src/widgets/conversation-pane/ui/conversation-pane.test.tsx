@@ -92,7 +92,12 @@ const renderPane = (): void => {
   render(
     <QueryClientProvider client={queryClient}>
       <MantineProvider theme={maxTheme}>
-        <ConversationPane chat={CHAT} isMobile={false} onBack={() => {}} />
+        <ConversationPane
+          chat={CHAT}
+          isMobile={false}
+          onBack={() => {}}
+          credentials={CREDENTIALS}
+        />
       </MantineProvider>
     </QueryClientProvider>,
   )
@@ -280,7 +285,7 @@ describe('ConversationPane', () => {
     render(
       <QueryClientProvider client={queryClient}>
         <MantineProvider theme={maxTheme}>
-          <ConversationPane chat={CHAT} isMobile onBack={onBack} />
+          <ConversationPane chat={CHAT} isMobile onBack={onBack} credentials={CREDENTIALS} />
         </MantineProvider>
       </QueryClientProvider>,
     )
