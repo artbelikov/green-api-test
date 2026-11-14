@@ -10,7 +10,8 @@ import {
   Title,
 } from '@mantine/core'
 import { IconPlus } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useMemo, useRef, useState } from 'react'
 import { ChatAvatarWithUrl, ChatRow } from '@/entities/chat'
 import { useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
@@ -21,6 +22,8 @@ import { useChatListHydration } from '../use-chat-list'
 import classes from './chat-list-pane.module.css'
 
 const SKELETON_KEYS = ['s1', 's2', 's3', 's4', 's5', 's6']
+const CHAT_ROW_ESTIMATED_HEIGHT = 80
+const ROW_OVERSCAN = 6
 
 const STATUS_COLORS = {
   connected: 'green',
@@ -42,14 +45,26 @@ export function ChatListPane() {
   const now = Date.now()
 
   const query = search.trim().toLowerCase()
-  const visible =
-    query.length === 0
-      ? summaries
-      : summaries.filter(
-          (summary) =>
-            summary.name.toLowerCase().includes(query) ||
-            (summary.lastMessage?.text.toLowerCase().includes(query) ?? false),
-        )
+  const visible = useMemo(
+    () =>
+      query.length === 0
+        ? summaries
+        : summaries.filter(
+            (summary) =>
+              summary.name.toLowerCase().includes(query) ||
+              (summary.lastMessage?.text.toLowerCase().includes(query) ?? false),
+          ),
+    [summaries, query],
+  )
+
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const virtualizer = useVirtualizer({
+    count: visible.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => CHAT_ROW_ESTIMATED_HEIGHT,
+    getItemKey: (index) => visible[index]?.id ?? `#${index}`,
+    overscan: ROW_OVERSCAN,
+  })
 
   const isEmpty = summaries.length === 0
   const chipStatus: keyof typeof STATUS_COLORS =
@@ -88,7 +103,7 @@ export function ChatListPane() {
           {i18n.session.settlingNotice}
         </Alert>
       ) : null}
-      <div className={classes.rows}>
+      <div ref={scrollRef} className={classes.rows} data-empty={isEmpty || undefined}>
         {loading && isEmpty ? (
           <Stack gap="sm" className={classes.skeleton}>
             {SKELETON_KEYS.map((key) => (
@@ -107,27 +122,42 @@ export function ChatListPane() {
             </Button>
           </div>
         ) : null}
-        {!isEmpty
-          ? visible.map((summary) => (
-              <ChatRow
-                key={summary.id}
-                chat={summary}
-                avatar={
-                  <ChatAvatarWithUrl
-                    chatId={summary.id}
-                    name={summary.name}
-                    size={54}
-                    credentials={credentials}
+        {!isEmpty ? (
+          <div className={classes.rowsWindow} style={{ height: virtualizer.getTotalSize() }}>
+            {virtualizer.getVirtualItems().map((virtualRow) => {
+              const summary = visible[virtualRow.index]
+              if (summary === undefined) {
+                return null
+              }
+              return (
+                <div
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={virtualizer.measureElement}
+                  className={classes.rowCell}
+                  style={{ transform: `translateY(${virtualRow.start}px)` }}
+                >
+                  <ChatRow
+                    chat={summary}
+                    avatar={
+                      <ChatAvatarWithUrl
+                        chatId={summary.id}
+                        name={summary.name}
+                        size={54}
+                        credentials={credentials}
+                      />
+                    }
+                    active={summary.id === activeChatId}
+                    now={now}
+                    youPrefix={i18n.messenger.list.youPrefix}
+                    noMessagesText={i18n.messenger.list.noMessagesYet}
+                    onSelect={(chatId) => void openChat(chatId)}
                   />
-                }
-                active={summary.id === activeChatId}
-                now={now}
-                youPrefix={i18n.messenger.list.youPrefix}
-                noMessagesText={i18n.messenger.list.noMessagesYet}
-                onSelect={(chatId) => void openChat(chatId)}
-              />
-            ))
-          : null}
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
       </div>
       <NewChatModal opened={modalOpen} onClose={() => setModalOpen(false)} />
     </aside>

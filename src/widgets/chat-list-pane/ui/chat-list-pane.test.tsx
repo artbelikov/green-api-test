@@ -10,6 +10,27 @@ import type { GreenApiCredentials } from '@/shared/api/greenapi'
 import { i18n } from '@/shared/config'
 import { handlers, type MockChat, mockGateway } from '@/shared/mocks'
 import { ChatListPane } from './chat-list-pane'
+import classes from './chat-list-pane.module.css'
+
+const ROWS_WINDOW_CLASS = classes.rowsWindow as string
+
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: (options: { count: number; getItemKey?: (index: number) => string }) => {
+    const items = Array.from({ length: options.count }, (_, index) => ({
+      index,
+      key: options.getItemKey?.(index) ?? String(index),
+      start: index * 80,
+      size: 80,
+    }))
+    return {
+      getVirtualItems: () => items,
+      getTotalSize: () => options.count * 80,
+      measureElement: () => {},
+      scrollToOffset: () => {},
+      scrollToIndex: () => {},
+    }
+  },
+}))
 
 const CREDENTIALS: GreenApiCredentials = {
   apiUrl: 'https://gateway.test',
@@ -88,6 +109,24 @@ describe('ChatListPane', () => {
     const summary = useChatsStore.getState().summaries.find((entry) => entry.id === '79991234567')
     expect(summary?.lastMessage?.id).toBe('hist-1')
     expect(summary?.unread).toBe(0)
+  })
+
+  it('renders hydrated rows inside the virtualized window with measurable cells', async () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    mockGateway.chats.push(...DEMO_CHATS)
+
+    renderPane()
+
+    expect(await screen.findByText('Demo Contact', {}, FIND_OPTIONS)).toBeInTheDocument()
+    const rowsWindow = document.querySelector(`.${ROWS_WINDOW_CLASS}`)
+    if (!(rowsWindow instanceof HTMLElement)) {
+      throw new Error('virtual rows window not found')
+    }
+    expect(rowsWindow.style.height).toBe('160px')
+    const cells = rowsWindow.querySelectorAll('[data-index]')
+    expect(cells).toHaveLength(2)
+    expect(cells[0]?.getAttribute('data-index')).toBe('0')
+    expect(cells[1]?.getAttribute('data-index')).toBe('1')
   })
 
   it('shows the empty state with the new-chat action when no chats exist', async () => {

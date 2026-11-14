@@ -143,19 +143,25 @@ describe('ConversationPane', () => {
   })
 
   it('renders day-grouped bubbles with times', () => {
-    seedMessages([
-      message('m1', new Date(2026, 10, 12, 9, 0)),
-      message('m2', new Date(2026, 10, 12, 9, 5), { direction: 'outgoing', status: 'sent' }),
-      message('m3', new Date(2026, 10, 13, 10, 0), { text: 'Second day' }),
-    ])
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date(2026, 10, 13, 18, 0))
+      seedMessages([
+        message('m1', new Date(2026, 10, 12, 9, 0)),
+        message('m2', new Date(2026, 10, 12, 9, 5), { direction: 'outgoing', status: 'sent' }),
+        message('m3', new Date(2026, 10, 13, 10, 0), { text: 'Second day' }),
+      ])
 
-    renderPane()
+      renderPane()
 
-    const yesterday = screen.getAllByText(i18n.messenger.conversation.date.yesterday)
-    expect(yesterday.length).toBeGreaterThan(0)
-    expect(screen.getByText(i18n.messenger.conversation.date.today)).toBeInTheDocument()
-    expect(screen.getByText('Second day')).toBeInTheDocument()
-    expect(screen.getByText('09:00')).toBeInTheDocument()
+      const yesterday = screen.getAllByText(i18n.messenger.conversation.date.yesterday)
+      expect(yesterday.length).toBeGreaterThan(0)
+      expect(screen.getByText(i18n.messenger.conversation.date.today)).toBeInTheDocument()
+      expect(screen.getByText('Second day')).toBeInTheDocument()
+      expect(screen.getByText('09:00')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('re-labels day dividers when midnight passes without new messages', () => {
