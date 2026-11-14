@@ -34,6 +34,14 @@ const scrollToStep = async (
   }, delta)
 }
 
+const captureChatOrder = async (page: import('@playwright/test').Page): Promise<string[]> =>
+  page.evaluate(() => {
+    const cells = Array.from(document.querySelectorAll('aside [data-index]'))
+    return cells
+      .map((cell) => cell.querySelector('[data-chat-id]')?.getAttribute('data-chat-id') ?? null)
+      .filter((id): id is string => id !== null)
+  })
+
 test('previews hydrate for the rendered window and keep filling as rows scroll in', async ({
   page,
 }) => {
@@ -65,6 +73,7 @@ test('previews hydrate for the rendered window and keep filling as rows scroll i
   await expect(
     page.getByText(`${i18n.messenger.list.media.other}`, { exact: true }).first(),
   ).toBeVisible({ timeout: 30_000 })
+  const orderAtStart = await captureChatOrder(page)
 
   for (let step = 0; step < 3; step += 1) {
     await scrollToStep(page, 800)
@@ -80,4 +89,10 @@ test('previews hydrate for the rendered window and keep filling as rows scroll i
       .join('|')
   })
   expect(bottomText).toContain(i18n.messenger.list.media.other)
+
+  for (let step = 0; step < 5; step += 1) {
+    await scrollToStep(page, -1000)
+  }
+  await page.waitForTimeout(1500)
+  expect(await captureChatOrder(page)).toEqual(orderAtStart)
 })

@@ -18,7 +18,7 @@ const mirrorPreviewAfterHistory = (chatId: string): void => {
   ) {
     return
   }
-  chats.applyNewMessage({ message: latest, fallbackName: null })
+  chats.applyPreviewBackfill({ message: latest })
 }
 
 export const openChat = async (chatId: string): Promise<void> => {

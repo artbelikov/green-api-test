@@ -10,6 +10,7 @@ import {
 import type {
   ChatLastMessagePreview,
   ChatMessagePreviewInput,
+  ChatPreviewBackfillInput,
   ChatStatusUpdateInput,
   ChatSummary,
 } from './types'
@@ -25,6 +26,7 @@ export type ChatsState = {
   readonly activeChatId: string | null
   upsertChats(chats: readonly Chat[]): void
   applyNewMessage(input: ChatMessagePreviewInput): void
+  applyPreviewBackfill(input: ChatPreviewBackfillInput): void
   applyStatusUpdate(update: ChatStatusUpdateInput): void
   openChat(chatId: string): void
   closeChat(): void
@@ -162,6 +164,7 @@ export function createChatsStore(deps: ChatsStoreDeps) {
             type: chat.type,
             username: chat.username,
             phone: chat.phone,
+            lastActivityAt: existing.lastMessage === null ? -(index + 1) : existing.lastActivityAt,
           })
         }
         commit([...byId.values()])
@@ -199,6 +202,42 @@ export function createChatsStore(deps: ChatsStoreDeps) {
                 lastActivityAt: message.timestamp,
               }
         commit([next, ...summaries.filter((summary) => summary.id !== next.id)])
+      },
+
+      applyPreviewBackfill({ message }) {
+        const { summaries } = get()
+        const target = summaries.find((summary) => summary.id === message.chatId)
+        if (target === undefined) {
+          const tail: ChatSummary = {
+            id: message.chatId,
+            name: message.chatId,
+            type: 'unknown',
+            username: null,
+            phone: null,
+            unread: 0,
+            lastMessage: previewOf(message),
+            lastActivityAt: -(summaries.length + 1),
+          }
+          commit(sortSummaries([tail, ...summaries]))
+          return
+        }
+        if (target.lastMessage !== null && message.timestamp < target.lastMessage.timestamp) {
+          return
+        }
+        if (
+          target.lastMessage?.id === message.id &&
+          target.lastMessage.status === message.status &&
+          target.lastMessage.timestamp === message.timestamp
+        ) {
+          return
+        }
+        commit(
+          summaries.map((summary) =>
+            summary.id === message.chatId
+              ? { ...summary, lastMessage: previewOf(message) }
+              : summary,
+          ),
+        )
       },
 
       applyStatusUpdate({ idMessage, status }) {

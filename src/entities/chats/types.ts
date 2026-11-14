@@ -30,6 +30,10 @@ export type ChatMessagePreviewInput = {
   readonly markUnread?: boolean
 }
 
+export type ChatPreviewBackfillInput = {
+  readonly message: Message
+}
+
 export type ChatStatusUpdateInput = {
   readonly idMessage: string
   readonly status: MessageDeliveryStatus

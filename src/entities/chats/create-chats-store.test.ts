@@ -44,6 +44,73 @@ describe('createChatsStore', () => {
     vi.useRealTimers()
   })
 
+  it('preview backfills mirror the row without reordering, unstamping, or unread inflation', () => {
+    const { storage } = memory()
+    const store = createChatsStore({ storage })
+
+    store.getState().upsertChats([chat('111'), chat('222'), chat('333')])
+    expect(store.getState().summaries.map((summary) => summary.id)).toEqual(['111', '222', '333'])
+
+    store.getState().applyPreviewBackfill({ message: incoming('m-old', '222', 'Photo', 999) })
+
+    expect(store.getState().summaries.map((summary) => summary.id)).toEqual(['111', '222', '333'])
+    const row = store.getState().summaries.find((summary) => summary.id === '222')
+    expect(row?.lastMessage).toEqual({
+      id: 'm-old',
+      text: 'Photo',
+      direction: 'incoming',
+      status: null,
+      timestamp: 999,
+    })
+    expect(row?.lastActivityAt).toBe(-2)
+    expect(row?.unread).toBe(0)
+  })
+
+  it('preview backfills cannot downgrade a live newer preview or reapply an identical copy', () => {
+    const { storage, now } = memory()
+    const store = createChatsStore({ storage })
+
+    store.getState().upsertChats([chat('111')])
+    store.getState().applyNewMessage({
+      message: incoming('m-live', '111', 'fresh hello', now() + 5_000),
+      fallbackName: null,
+    })
+    const afterLive = store.getState().summaries
+    expect(afterLive[0]?.lastMessage?.id).toBe('m-live')
+
+    store.getState().applyPreviewBackfill({
+      message: incoming('m-stale', '111', 'stale journal copy', 1_000),
+    })
+    expect(store.getState().summaries[0]?.lastMessage?.id).toBe('m-live')
+    expect(store.getState().summaries[0]?.lastActivityAt).toBe(now() + 5_000)
+
+    const beforeRepeat = store.getState().summaries
+    store.getState().applyPreviewBackfill({
+      message: incoming('m-live', '111', 'fresh hello', now() + 5_000),
+    })
+    expect(store.getState().summaries).toBe(afterLive)
+    expect(beforeRepeat[0]?.lastMessage?.id).toBe('m-live')
+  })
+
+  it('unknown-chat backfills append below the seeded order with no unread', () => {
+    const { storage } = memory()
+    const store = createChatsStore({ storage })
+
+    store.getState().upsertChats([chat('111')])
+    store.getState().applyPreviewBackfill({
+      message: incoming('m-ghost', 'ghost-chat', 'Message', 1_000),
+    })
+
+    expect(store.getState().summaries.map((summary) => summary.id)).toEqual(['111', 'ghost-chat'])
+    expect(store.getState().summaries[1]).toMatchObject({
+      name: 'ghost-chat',
+      type: 'unknown',
+      unread: 0,
+      lastMessage: { id: 'm-ghost', text: 'Message' },
+    })
+    expect(store.getState().summaries[1]?.lastActivityAt).toBe(-2)
+  })
+
   it('upserts chats sorted by last activity with a deterministic tiebreak', () => {
     const { storage, now } = memory()
     const store = createChatsStore({ storage })

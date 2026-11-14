@@ -130,11 +130,13 @@ describe('useChatPreviewHydration', () => {
     seedSession(credentials)
 
     const handle = mountHarness(idsOf(CHATS))
+    const orderBefore = useChatsStore.getState().summaries.map((summary) => summary.id)
     await waitForTest(() => {
       expect(historyRequests).toEqual(idsOf(CHATS))
     })
 
     const summaries = useChatsStore.getState().summaries
+    expect(summaries.map((summary) => summary.id)).toEqual(orderBefore)
     expect(summaries.find((entry) => entry.id === '79000000001')?.lastMessage).toMatchObject({
       id: 'hist-1',
       text: 'Preview for 1',
@@ -144,6 +146,11 @@ describe('useChatPreviewHydration', () => {
       text: 'Preview for 2',
     })
     expect(summaries.every((entry) => entry.unread === 0)).toBe(true)
+
+    const activitySnapshot = summaries.map((summary) => summary.lastActivityAt)
+    expect(
+      summaries.every((summary, index) => summary.lastActivityAt === activitySnapshot[index]),
+    ).toBe(true)
     handle.unmount()
   })
 

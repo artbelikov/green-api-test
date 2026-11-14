@@ -61,6 +61,7 @@ export function ChatRow({
   return (
     <UnstyledButton
       className={classes.row}
+      data-chat-id={chat.id}
       data-active={active || undefined}
       data-unread={chat.unread > 0 || undefined}
       aria-current={active ? 'true' : undefined}

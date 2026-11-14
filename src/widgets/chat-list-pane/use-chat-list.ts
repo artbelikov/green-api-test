@@ -89,9 +89,7 @@ const hydrateVisiblePreviews = async (
       }
       const latest = previewFromHistory(history)
       if (latest !== null) {
-        useChatsStore
-          .getState()
-          .applyNewMessage({ message: latest, fallbackName: null, markUnread: false })
+        useChatsStore.getState().applyPreviewBackfill({ message: latest })
       }
     } catch {
       useChatsStore.getState().discardPreviewAttempt(chatId)
