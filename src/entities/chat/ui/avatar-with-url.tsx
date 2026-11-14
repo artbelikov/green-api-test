@@ -1,8 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { credentialsFingerprint, type GreenApiCredentials, getAvatar } from '@/shared/api/greenapi'
+import {
+  credentialsFingerprint,
+  type GreenApiCredentials,
+  getAvatar,
+  isQuotaExceededError,
+} from '@/shared/api/greenapi'
+import { avatarQuotaGate } from '../model/avatar-quota-gate'
 import { ChatAvatar } from './avatar'
 
-const AVATAR_STALE_TIME_MS = 5 * 60_000
+const AVATAR_STALE_TIME_MS = 30 * 60_000
 
 export type ChatAvatarWithUrlProps = {
   readonly chatId: string
@@ -19,12 +25,24 @@ export function ChatAvatarWithUrl({ chatId, name, size, credentials }: ChatAvata
       credentials === null
         ? (): Promise<string | null> => Promise.resolve(null)
         : async (): Promise<string | null> => {
-            const avatar = await getAvatar(credentials, chatId)
-            if (avatar.available === false) {
+            const fingerprint = credentialsFingerprint(credentials)
+            if (avatarQuotaGate.isTripped(fingerprint)) {
               return null
             }
-            const url = avatar.urlAvatar ?? avatar.base64Avatar
-            return typeof url === 'string' && url.length > 0 ? url : null
+            try {
+              const avatar = await getAvatar(credentials, chatId)
+              if (avatar.available === false) {
+                return null
+              }
+              const url = avatar.urlAvatar ?? avatar.base64Avatar
+              return typeof url === 'string' && url.length > 0 ? url : null
+            } catch (error) {
+              if (!isQuotaExceededError(error)) {
+                throw error
+              }
+              avatarQuotaGate.trip(fingerprint)
+              return null
+            }
           },
     enabled: credentials !== null,
     staleTime: AVATAR_STALE_TIME_MS,

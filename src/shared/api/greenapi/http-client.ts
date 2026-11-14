@@ -54,6 +54,11 @@ export class ApiError extends Error {
   }
 }
 
+const QUOTA_EXCEEDED_STATUS = 466
+
+export const isQuotaExceededError = (error: unknown): error is ApiError =>
+  error instanceof ApiError && error.kind === 'status' && error.status === QUOTA_EXCEEDED_STATUS
+
 const DEFAULT_TIMEOUT_MS = 20_000
 
 export type GreenApiRequest = {
