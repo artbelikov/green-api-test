@@ -19,7 +19,7 @@ import { useSessionStore } from '@/entities/session'
 import { openChat } from '@/features/open-chat'
 import { NewChatModal } from '@/features/pick-chat'
 import { i18n } from '@/shared/config'
-import { useChatListHydration } from '../use-chat-list'
+import { useChatListHydration, useChatPreviewHydration } from '../use-chat-list'
 import classes from './chat-list-pane.module.css'
 
 const SKELETON_KEYS = ['s1', 's2', 's3', 's4', 's5', 's6']
@@ -73,6 +73,15 @@ export function ChatListPane() {
     getItemKey: (index) => visible[index]?.id ?? `#${index}`,
     overscan: ROW_OVERSCAN,
   })
+  const virtualItems = virtualizer.getVirtualItems()
+  const visibleChatIds = useMemo(
+    () =>
+      virtualItems
+        .map((item) => visible[item.index]?.id)
+        .filter((id): id is string => id !== undefined),
+    [virtualItems, visible],
+  )
+  useChatPreviewHydration(visibleChatIds)
 
   const isEmpty = summaries.length === 0
   const chipStatus: keyof typeof STATUS_COLORS =
@@ -140,7 +149,7 @@ export function ChatListPane() {
         ) : null}
         {!isEmpty ? (
           <div className={classes.rowsWindow} style={{ height: virtualizer.getTotalSize() }}>
-            {virtualizer.getVirtualItems().map((virtualRow) => {
+            {virtualItems.map((virtualRow) => {
               const summary = visible[virtualRow.index]
               if (summary === undefined) {
                 return null

@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
 import {
   type Chat,
+  type GreenApiCredentials,
   getChatHistory,
   getChats,
   mapChatListItem,
@@ -10,20 +12,33 @@ import {
 } from '@/shared/api/greenapi'
 
 const LIST_STALE_TIME_MS = 30_000
-const PREVIEW_SWEEP_LIMIT = 30
-const PREVIEW_SWEEP_COUNT = 1
+const PREVIEW_HISTORY_COUNT = 1
 
-const hydratePreviewsInBackground = async (
-  credentials: NonNullable<ReturnType<typeof useSessionStore.getState>['credentials']>,
+let previewCredentialsSession: GreenApiCredentials | null = null
+const previewAttempts = new Set<string>()
+
+const hydrateVisiblePreviews = async (
+  credentials: GreenApiCredentials,
   chatIds: readonly string[],
 ): Promise<void> => {
+  if (credentials !== previewCredentialsSession) {
+    previewAttempts.clear()
+    previewCredentialsSession = credentials
+  }
   for (const chatId of chatIds) {
+    if (previewAttempts.has(chatId)) {
+      continue
+    }
     const summary = useChatsStore.getState().summaries.find((entry) => entry.id === chatId)
     if (summary?.lastMessage !== null || useSessionStore.getState().credentials !== credentials) {
       continue
     }
+    previewAttempts.add(chatId)
     try {
-      const history = await getChatHistory(credentials, { chatId, count: PREVIEW_SWEEP_COUNT })
+      const history = await getChatHistory(credentials, {
+        chatId,
+        count: PREVIEW_HISTORY_COUNT,
+      })
       if (useSessionStore.getState().credentials !== credentials) {
         continue
       }
@@ -33,8 +48,20 @@ const hydratePreviewsInBackground = async (
           .getState()
           .applyNewMessage({ message: latest, fallbackName: null, markUnread: false })
       }
-    } catch {}
+    } catch {
+      previewAttempts.delete(chatId)
+    }
   }
+}
+
+export const useChatPreviewHydration = (visibleChatIds: readonly string[]): void => {
+  const credentials = useSessionStore((state) => state.credentials)
+  useEffect(() => {
+    if (credentials === null || visibleChatIds.length === 0) {
+      return
+    }
+    void hydrateVisiblePreviews(credentials, visibleChatIds).catch(() => undefined)
+  }, [credentials, visibleChatIds])
 }
 
 export type ChatListHydration = {
@@ -56,10 +83,6 @@ export const useChatListHydration = (): ChatListHydration => {
       }
       const chats = items.map(mapChatListItem).filter((chat): chat is Chat => chat !== null)
       useChatsStore.getState().upsertChats(chats)
-      void hydratePreviewsInBackground(
-        credentials,
-        chats.slice(0, PREVIEW_SWEEP_LIMIT).map((chat) => chat.id),
-      ).catch(() => undefined)
       return true
     },
     enabled: connected,
