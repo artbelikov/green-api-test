@@ -30,8 +30,12 @@ export type ChatsState = {
   applyStatusUpdate(update: ChatStatusUpdateInput): void
   openChat(chatId: string): void
   closeChat(): void
-  claimPreviewAttempt(chatId: string, credentials: GreenApiCredentials): boolean
-  discardPreviewAttempt(chatId: string): void
+  claimPreviewAttempt(
+    chatId: string,
+    credentials: GreenApiCredentials,
+    signal: AbortSignal,
+  ): boolean
+  discardPreviewAttempt(chatId: string, signal: AbortSignal): void
   clear(): void
 }
 
@@ -134,7 +138,7 @@ export function createChatsStore(deps: ChatsStoreDeps) {
     }
 
     let previewAttemptSession: GreenApiCredentials | null = null
-    const previewAttempts = new Set<string>()
+    const previewAttemptOwners = new Map<string, AbortSignal>()
 
     return {
       summaries: sortSummaries(persistedSummaries),
@@ -280,26 +284,30 @@ export function createChatsStore(deps: ChatsStoreDeps) {
         set({ activeChatId: null })
       },
 
-      claimPreviewAttempt(chatId, credentials) {
+      claimPreviewAttempt(chatId, credentials, signal) {
         if (previewAttemptSession !== credentials) {
-          previewAttempts.clear()
+          previewAttemptOwners.clear()
           previewAttemptSession = credentials
         }
-        if (previewAttempts.has(chatId)) {
+        const owner = previewAttemptOwners.get(chatId)
+        if (owner !== undefined && !owner.aborted) {
           return false
         }
-        previewAttempts.add(chatId)
+        previewAttemptOwners.set(chatId, signal)
         return true
       },
 
-      discardPreviewAttempt(chatId) {
-        previewAttempts.delete(chatId)
+      discardPreviewAttempt(chatId, signal) {
+        if (previewAttemptOwners.get(chatId) !== signal) {
+          return
+        }
+        previewAttemptOwners.delete(chatId)
       },
 
       clear() {
         persistThrottle.cancel()
         deps.storage.remove(CHATS_STORAGE_KEY)
-        previewAttempts.clear()
+        previewAttemptOwners.clear()
         previewAttemptSession = null
         set({ summaries: [], activeChatId: null })
       },

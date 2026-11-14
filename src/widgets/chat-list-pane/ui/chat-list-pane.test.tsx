@@ -188,18 +188,16 @@ describe('ChatListPane', () => {
     expect(await screen.findByText(i18n.newChat.title, {}, FIND_OPTIONS)).toBeInTheDocument()
   })
 
-  it('skips the preview sweep application when the session disconnects mid-await', async () => {
+  it('aborts the in-flight preview sweep on disconnect so the history reply never lands', async () => {
     let releaseHistory: () => void = () => undefined
     const historyGate = new Promise<void>((resolve) => {
       releaseHistory = resolve
     })
-    let historyResponses = 0
     useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
     mockGateway.chats.push(DEMO_CHATS[0] as MockChat)
     server.use(
       http.post(endpointOf('getChatHistory'), async () => {
         await historyGate
-        historyResponses += 1
         return HttpResponse.json([
           {
             type: 'incoming',
@@ -217,16 +215,25 @@ describe('ChatListPane', () => {
     expect(await screen.findByText('Demo Contact', {}, FIND_OPTIONS)).toBeInTheDocument()
     const sweepChatId = useChatsStore.getState().summaries[0]?.id
     expect(sweepChatId).toBe('79991234567')
+    if (sweepChatId === undefined) {
+      throw new Error('previewless sweep chat missing')
+    }
 
     useSessionStore.getState().disconnect()
     releaseHistory()
 
+    const probe = new AbortController()
     await vi.waitFor(
       () => {
-        expect(historyResponses).toBe(1)
+        expect(
+          useChatsStore.getState().claimPreviewAttempt(sweepChatId, CREDENTIALS, probe.signal),
+        ).toBe(true)
       },
-      { timeout: 5_000 },
+      { timeout: 3_000 },
     )
+    expect(useChatsStore.getState().summaries[0]?.lastMessage).toBeNull()
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
     expect(useChatsStore.getState().summaries[0]?.lastMessage).toBeNull()
   })
 })

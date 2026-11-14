@@ -87,6 +87,27 @@ const ok = (chatId: string, suffix: string): { status: number; body: readonly un
   body: [historyItem(chatId, `hist-${suffix}`, `Preview for ${suffix}`)],
 })
 
+const hangUntilAborted = (signal: AbortSignal): Promise<void> =>
+  new Promise((resolvePromise) => {
+    signal.addEventListener('abort', () => resolvePromise(), { once: true })
+  })
+
+const trackHangableHistoryRequests = (): void => {
+  historyRequests = []
+  server.use(
+    http.post(endpointOf('getChatHistory'), async ({ request }) => {
+      const body = (await request.json()) as { chatId?: string }
+      const chatId = body.chatId ?? ''
+      historyRequests.push(chatId)
+      if (chatId === '79000000001') {
+        await hangUntilAborted(request.signal)
+        return HttpResponse.json([])
+      }
+      return HttpResponse.json([historyItem(chatId, 'hist-2', 'Preview for 2')])
+    }),
+  )
+}
+
 const Harness = ({ visibleChatIds }: { readonly visibleChatIds: readonly string[] }): null => {
   useChatPreviewHydration(visibleChatIds)
   return null
@@ -293,6 +314,60 @@ describe('useChatPreviewHydration', () => {
       text: 'Message',
     })
     handle.unmount()
+  })
+
+  it('aborts the stale pass when the window changes and hydrates the current window instead', async () => {
+    trackHangableHistoryRequests()
+    const credentials = freshCredentials()
+    seedSession(credentials)
+
+    const handle = mountHarness(['79000000001'])
+    await waitForTest(() => {
+      expect(historyRequests).toEqual(['79000000001'])
+    })
+
+    rerenderHarness(handle, ['79000000002'])
+    await waitForTest(() => {
+      expect(historyRequests).toEqual(['79000000001', '79000000002'])
+      expect(
+        useChatsStore.getState().summaries.find((entry) => entry.id === '79000000002')?.lastMessage,
+      ).toMatchObject({ id: 'hist-2', text: 'Preview for 2' })
+    })
+    expect(
+      useChatsStore.getState().summaries.find((entry) => entry.id === '79000000001')?.lastMessage,
+    ).toBeNull()
+    handle.unmount()
+  })
+
+  it('releases the aborted partial pass so a later visibility pass retries it', async () => {
+    trackHangableHistoryRequests()
+    const credentials = freshCredentials()
+    seedSession(credentials)
+
+    const handle = mountHarness(['79000000001'])
+    await waitForTest(() => {
+      expect(historyRequests).toEqual(['79000000001'])
+    })
+    handle.unmount()
+
+    const probe = new AbortController()
+    await waitForTest(() => {
+      expect(
+        useChatsStore.getState().claimPreviewAttempt('79000000001', credentials, probe.signal),
+      ).toBe(true)
+    })
+    act(() => {
+      useChatsStore.getState().discardPreviewAttempt('79000000001', probe.signal)
+    })
+
+    const retryHandle = mountHarness(['79000000001'])
+    await waitForTest(() => {
+      expect(historyRequests).toEqual(['79000000001', '79000000001'])
+      expect(
+        useChatsStore.getState().summaries.find((entry) => entry.id === '79000000001')?.lastMessage,
+      ).toBeNull()
+    })
+    retryHandle.unmount()
   })
 
   it('skips deleted journal entries and still mirrors the newest usable copy', async () => {

@@ -25,6 +25,7 @@ export type GreenApiFacadeOptions = {
   readonly signal?: AbortSignal | undefined
   readonly timeoutMs?: number | undefined
   readonly priority?: RateQueuePriority | undefined
+  readonly coalesce?: boolean | undefined
 }
 
 export type SendMessageArgs = {
@@ -67,6 +68,10 @@ export async function getChatHistory(
   args: ChatHistoryArgs,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiHistoryItem[]> {
+  const coalesceId =
+    options.coalesce === false
+      ? undefined
+      : coalesceKey(credentials, `${args.chatId}:${args.count}`)
   return rateQueue.enqueue(
     'getChatHistory',
     () =>
@@ -79,7 +84,7 @@ export async function getChatHistory(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
-    coalesceKey(credentials, `${args.chatId}:${args.count}`),
+    coalesceId,
     options.priority ?? 'background',
   )
 }

@@ -486,10 +486,30 @@ describe('createChatsStore', () => {
       idInstance: '110100200',
       apiTokenInstance: 'token-a',
     }
+    const owner = new AbortController()
 
-    expect(store.getState().claimPreviewAttempt('111', credentials)).toBe(true)
-    expect(store.getState().claimPreviewAttempt('111', credentials)).toBe(false)
-    expect(store.getState().claimPreviewAttempt('222', credentials)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', credentials, owner.signal)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', credentials, owner.signal)).toBe(false)
+    expect(store.getState().claimPreviewAttempt('222', credentials, owner.signal)).toBe(true)
+  })
+
+  it('steals a claim whose owning run aborted and keeps the live owner', () => {
+    const { storage } = memory()
+    const store = createChatsStore({ storage })
+    const credentials = {
+      apiUrl: 'https://gateway.test',
+      idInstance: '110100200',
+      apiTokenInstance: 'token-a',
+    }
+    const stale = new AbortController()
+    const live = new AbortController()
+
+    expect(store.getState().claimPreviewAttempt('111', credentials, stale.signal)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', credentials, live.signal)).toBe(false)
+    stale.abort()
+    expect(store.getState().claimPreviewAttempt('111', credentials, live.signal)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', credentials, stale.signal)).toBe(false)
+    store.getState().discardPreviewAttempt('111', live.signal)
   })
 
   it('re-attempts a chat when the credentials session changes', () => {
@@ -501,11 +521,31 @@ describe('createChatsStore', () => {
       apiTokenInstance: 'token-a',
     }
     const second = { ...first, apiTokenInstance: 'token-b' }
+    const firstOwner = new AbortController()
+    const secondOwner = new AbortController()
 
-    expect(store.getState().claimPreviewAttempt('111', first)).toBe(true)
-    expect(store.getState().claimPreviewAttempt('111', first)).toBe(false)
-    expect(store.getState().claimPreviewAttempt('111', second)).toBe(true)
-    expect(store.getState().claimPreviewAttempt('111', first)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', first, firstOwner.signal)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', first, firstOwner.signal)).toBe(false)
+    expect(store.getState().claimPreviewAttempt('111', second, secondOwner.signal)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', first, firstOwner.signal)).toBe(true)
+  })
+
+  it('discardPreviewAttempt releases only the owning signal claim', () => {
+    const { storage } = memory()
+    const store = createChatsStore({ storage })
+    const credentials = {
+      apiUrl: 'https://gateway.test',
+      idInstance: '110100200',
+      apiTokenInstance: 'token-a',
+    }
+    const owner = new AbortController()
+    const stranger = new AbortController()
+
+    expect(store.getState().claimPreviewAttempt('111', credentials, owner.signal)).toBe(true)
+    store.getState().discardPreviewAttempt('111', stranger.signal)
+    expect(store.getState().claimPreviewAttempt('111', credentials, stranger.signal)).toBe(false)
+    store.getState().discardPreviewAttempt('111', owner.signal)
+    expect(store.getState().claimPreviewAttempt('111', credentials, stranger.signal)).toBe(true)
   })
 
   it('clear() resets preview attempts and the session key', () => {
@@ -516,9 +556,10 @@ describe('createChatsStore', () => {
       idInstance: '110100200',
       apiTokenInstance: 'token-a',
     }
+    const owner = new AbortController()
 
-    expect(store.getState().claimPreviewAttempt('111', credentials)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', credentials, owner.signal)).toBe(true)
     store.getState().clear()
-    expect(store.getState().claimPreviewAttempt('111', credentials)).toBe(true)
+    expect(store.getState().claimPreviewAttempt('111', credentials, owner.signal)).toBe(true)
   })
 })

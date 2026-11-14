@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
 import {
@@ -66,9 +66,13 @@ const previewFromHistory = (history: readonly GreenApiHistoryItem[]): Message | 
 const hydrateVisiblePreviews = async (
   credentials: GreenApiCredentials,
   chatIds: readonly string[],
+  signal: AbortSignal,
 ): Promise<void> => {
   for (const chatId of chatIds) {
-    if (!useChatsStore.getState().claimPreviewAttempt(chatId, credentials)) {
+    if (signal.aborted) {
+      return
+    }
+    if (!useChatsStore.getState().claimPreviewAttempt(chatId, credentials, signal)) {
       continue
     }
     const summary = useChatsStore.getState().summaries.find((entry) => entry.id === chatId)
@@ -82,7 +86,7 @@ const hydrateVisiblePreviews = async (
           chatId,
           count: PREVIEW_HISTORY_COUNT,
         },
-        { priority: 'user' },
+        { priority: 'user', signal, coalesce: false },
       )
       if (useSessionStore.getState().credentials !== credentials) {
         continue
@@ -90,21 +94,54 @@ const hydrateVisiblePreviews = async (
       const latest = previewFromHistory(history)
       if (latest !== null) {
         useChatsStore.getState().applyPreviewBackfill({ message: latest })
+        useChatsStore.getState().discardPreviewAttempt(chatId, signal)
       }
     } catch {
-      useChatsStore.getState().discardPreviewAttempt(chatId)
+      useChatsStore.getState().discardPreviewAttempt(chatId, signal)
     }
   }
 }
 
+type PreviewPass = {
+  readonly controller: AbortController
+}
+
 export const useChatPreviewHydration = (visibleChatIds: readonly string[]): void => {
   const credentials = useSessionStore((state) => state.credentials)
+  const livePasses = useRef<PreviewPass[]>([])
+  const lastWindowKey = useRef<string>('')
+
+  const stopAllPasses = useCallback((): void => {
+    for (const pass of livePasses.current) {
+      pass.controller.abort()
+    }
+    livePasses.current = []
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      stopAllPasses()
+    }
+  }, [stopAllPasses])
+
   useEffect(() => {
     if (credentials === null || visibleChatIds.length === 0) {
+      stopAllPasses()
+      lastWindowKey.current = ''
       return
     }
-    void hydrateVisiblePreviews(credentials, visibleChatIds).catch(() => undefined)
-  }, [credentials, visibleChatIds])
+    const windowKey = visibleChatIds.join('\u0000')
+    if (windowKey !== lastWindowKey.current) {
+      stopAllPasses()
+    }
+    lastWindowKey.current = windowKey
+    const survived = livePasses.current.filter((pass) => !pass.controller.signal.aborted)
+    const pass: PreviewPass = { controller: new AbortController() }
+    livePasses.current = [...survived, pass]
+    void hydrateVisiblePreviews(credentials, visibleChatIds, pass.controller.signal).catch(
+      () => undefined,
+    )
+  }, [credentials, visibleChatIds, stopAllPasses])
 }
 
 export type ChatListHydration = {
