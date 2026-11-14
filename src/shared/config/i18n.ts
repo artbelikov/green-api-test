@@ -10,10 +10,6 @@ export const i18n = {
         'Only Russian and Kazakhstan phone numbers are supported. For other contacts, enter the @nickname.',
     },
   },
-  session: {
-    settlingNotice:
-      'Settings are being applied on the instance — chat history may stay empty for a few minutes.',
-  },
   app: {
     loading: 'Loading…',
     restoring: 'Restoring session…',

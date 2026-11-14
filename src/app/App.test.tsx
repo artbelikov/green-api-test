@@ -74,9 +74,6 @@ describe('App', () => {
     expect(
       screen.queryByRole('button', { name: i18n.connect.connectAction }),
     ).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(screen.getByText(i18n.session.settlingNotice)).toBeInTheDocument()
-    })
     expect(
       screen.getByRole('button', { name: i18n.messenger.list.newChatAction }),
     ).toBeInTheDocument()

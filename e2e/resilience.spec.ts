@@ -12,17 +12,16 @@ import {
 const DEMO_PHONE = '79991234567'
 const DEMO_NAME = 'Demo Contact'
 
-test('a poll outage flips the chip to reconnecting and recovery clears it', async ({ page }) => {
+test('a poll outage surfaces the reconnect banner and recovery clears it', async ({ page }) => {
   await connectMockInstance(page)
   await createChatByPhone(page, DEMO_PHONE, DEMO_NAME)
   await setMockGatewayFlag(page, 'autoReplyEnabled', false)
-  await expect(page.getByText(i18n.messenger.list.status.connected, { exact: true })).toBeVisible()
+  await expect(page.getByText(i18n.messenger.list.reconnectBanner)).toHaveCount(0)
 
   await setMockGatewayFlag(page, 'pollOutage', true)
-  await expect(
-    page.getByText(i18n.messenger.list.status.reconnecting, { exact: true }),
-  ).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText(i18n.messenger.list.reconnectBanner)).toBeVisible()
+  await expect(page.getByText(i18n.messenger.list.reconnectBanner)).toBeVisible({
+    timeout: 15_000,
+  })
 
   await setMockGatewayFlag(page, 'pollOutage', false)
   await deliverBackgroundMessage(page, {
@@ -31,10 +30,9 @@ test('a poll outage flips the chip to reconnecting and recovery clears it', asyn
     chatName: DEMO_NAME,
     text: 'Back online message',
   })
-  await expect(page.getByText(i18n.messenger.list.status.connected, { exact: true })).toBeVisible({
+  await expect(page.getByText(i18n.messenger.list.reconnectBanner)).toHaveCount(0, {
     timeout: 15_000,
   })
-  await expect(page.getByText(i18n.messenger.list.reconnectBanner)).toHaveCount(0)
   await expect(messagesRegion(page).getByText('Back online message')).toBeVisible()
 })
 

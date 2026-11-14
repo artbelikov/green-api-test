@@ -1,7 +1,5 @@
 import {
   ActionIcon,
-  Alert,
-  Badge,
   Button,
   ScrollArea,
   Skeleton,
@@ -26,13 +24,6 @@ const SKELETON_KEYS = ['s1', 's2', 's3', 's4', 's5', 's6']
 const CHAT_ROW_ESTIMATED_HEIGHT = 80
 const ROW_OVERSCAN = 6
 
-const STATUS_COLORS = {
-  connected: 'green',
-  connecting: 'yellow',
-  reconnecting: 'yellow',
-  disconnected: 'gray',
-} as const
-
 const CONTENT_ROWS_STYLE = { display: 'block' } as const
 const CONTENT_STATE_STYLE = {
   display: 'flex',
@@ -44,9 +35,6 @@ export function ChatListPane() {
   const summaries = useChatsStore((state) => state.summaries)
   const activeChatId = useChatsStore((state) => state.activeChatId)
   const credentials = useSessionStore((state) => state.credentials)
-  const status = useSessionStore((state) => state.status)
-  const reconnecting = useSessionStore((state) => state.reconnecting)
-  const settling = useSessionStore((state) => state.bootstrapPhase === 'settling')
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const { loading } = useChatListHydration()
@@ -84,8 +72,6 @@ export function ChatListPane() {
   useChatPreviewHydration(visibleChatIds)
 
   const isEmpty = summaries.length === 0
-  const chipStatus: keyof typeof STATUS_COLORS =
-    status === 'connected' && reconnecting ? 'reconnecting' : status
 
   return (
     <aside className={classes.pane}>
@@ -102,11 +88,6 @@ export function ChatListPane() {
           <IconPlus className={classes.fabIcon} aria-hidden />
         </ActionIcon>
       </div>
-      <div className={classes.statusRow}>
-        <Badge variant="light" color={STATUS_COLORS[chipStatus]} size="sm" radius="xl">
-          {i18n.messenger.list.status[chipStatus]}
-        </Badge>
-      </div>
       <TextInput
         className={classes.search}
         placeholder={i18n.messenger.list.searchPlaceholder}
@@ -115,11 +96,6 @@ export function ChatListPane() {
         value={search}
         onChange={(event) => setSearch(event.currentTarget.value)}
       />
-      {settling ? (
-        <Alert variant="light" color="brand" className={classes.settling}>
-          {i18n.session.settlingNotice}
-        </Alert>
-      ) : null}
       <ScrollArea
         className={classes.rows}
         data-empty={isEmpty || undefined}

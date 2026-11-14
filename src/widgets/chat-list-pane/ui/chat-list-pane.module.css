@@ -24,17 +24,8 @@
   margin: auto;
 }
 
-.statusRow {
-  display: flex;
-  padding: 0 16px 8px;
-}
-
 .search {
   padding: 0 16px 8px;
-}
-
-.settling {
-  margin: 0 16px 8px;
 }
 
 .rows {

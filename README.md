@@ -19,7 +19,7 @@ cp .env.example .env   # optional: pin VITE_API_MODE locally (gitignored)
 pnpm dev
 ```
 
-`pnpm dev` opens the **connect screen**: enter your GREEN-API `idInstance` and `apiTokenInstance` (apiUrl is editable under _Advanced settings_) and press _Connect_. The app validates the credentials via `getStateInstance`, persists the session in `localStorage` (survives reloads), and bootstraps the webhook settings (`incomingWebhook`, `outgoingMessageWebhook`, `outgoingWebhook`, `stateWebhook`) once via `SetSettings` — idempotent, `webhookUrl` stays empty. Since the instance applies settings server-side for up to ~5 minutes, a "settling in" notice is shown until then, and empty `getChatHistory` results are normal during that window. _Disconnect_ clears the stored session.
+`pnpm dev` opens the **connect screen**: enter your GREEN-API `idInstance` and `apiTokenInstance` (apiUrl is editable under _Advanced settings_) and press _Connect_. The app validates the credentials via `getStateInstance`, persists the session in `localStorage` (survives reloads), and bootstraps the webhook settings (`incomingWebhook`, `outgoingMessageWebhook`, `outgoingWebhook`, `stateWebhook`) once via `SetSettings` — idempotent, `webhookUrl` stays empty. Since the instance applies settings server-side for up to ~5 minutes, empty `getChatHistory` results are normal during that window; previews keep filling as answers start to flow. _Disconnect_ clears the stored session.
 
 Mock/demo mode (no instance required): boot with `VITE_API_MODE=mock`, or open any page with **`?mock=1`** (runtime activation for reviewers — credentials are prefilled, any values connect). The scripted MSW fake gateway answers `getStateInstance`, `getSettings`/`setSettings`, `getContactInfo`, `getChats`, `getContacts`, `getAvatar` (no photo — initials fallback), `sendMessage` (echoes a delivery webhook and schedules a scripted incoming auto-reply ~1.2 s later so the receive flow can be demoed end-to-end), `getChatHistory` (newest-first journal of the mock message log), `readChat`, and the notification receive/ack pair. The demo contact `79991234567` resolves to a named profile; any other phone creates a chat named by the phone (mirroring live unknown-recipient behavior). Chat data (summaries and up to 200 messages per chat) persists in `localStorage` across reloads and is cleared on _Disconnect_. The mock layer ships in a deferred async chunk (loaded only when mock mode activates) and exposes fault-injection controls on `window.mockGateway` (`pollOutage` 500s to exercise reconnect recovery, `invalidate` to force a session-invalidating 401) that the e2e suite drives.
 
@@ -124,7 +124,7 @@ Then point the same **Settings → Deploy → Healthcheck** at `/healthz` (timeo
 
 - `GET /healthz` → `200 ok`.
 - Open the root URL; force-reload arbitrary deep links (e.g. refresh after guard) — nginx falls back to `index.html`, no 404.
-- Connect with a real GREEN-API instance → chat list appears (settling notice first — see limitations).
+- Connect with a real GREEN-API instance → chat list appears with previews filling in (~1 rps per chat — see limitations).
 - Create a chat by phone → send a message → reply arrives live → ticks escalate.
 - Hard-refresh mid-session → session, chats and messages restore from `localStorage`.
 
@@ -140,7 +140,7 @@ Fastest routes to try the app:
 - **Unread counters are client-side** — the Telegram gateway does not expose unread counts via `getChats`; badges reset when `localStorage` is cleared or on _Disconnect_.
 - **Telegram phone caveat**: `checkWhatsapp` returns 404 on Telegram instances, so phone → chat resolution goes through `getContactInfo` with the `phone@c.us` form. Unregistered recipients answer the gateway with _not found_ (HTTP 400, verified 2026-11-13) — the client treats a not-found answer on a valid phone as an unknown recipient and still creates the chat, named by the entered phone; a first-ever incoming message enriches it. Other errors (auth, limits, network) surface as a friendly error.
 - **`readChat` marks the linked real account's chats read** — opening a chat clears unread on the actual Telegram account behind the instance, not only inside this app.
-- **History of messages received before the webhook flags were enabled** shows up only after logout + re-authorization of the instance (gateway journal behavior); until then the app treats an empty history as normal — live notifications keep flowing — and shows the "settling in" notice while the instance applies settings (~5 min).
+- **History of messages received before the webhook flags were enabled** shows up only after logout + re-authorization of the instance (gateway journal behavior); until then the app treats an empty history as normal — live notifications keep flowing — while the instance applies settings (~5 min).
 - **Free "Developer" plan caps**: 3 chats, 100 availability checks — API limit errors surface as toasts.
 - **Text-only scope**: media / edit / delete / reactions are deliberately out of scope; non-text journal entries and `isDeleted` items are skipped by the mappers.
 
