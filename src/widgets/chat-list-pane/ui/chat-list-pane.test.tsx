@@ -38,6 +38,8 @@ const CREDENTIALS: GreenApiCredentials = {
   apiTokenInstance: 'token-1',
 }
 
+const sessionCredentials = (): GreenApiCredentials => ({ ...CREDENTIALS })
+
 const server = setupServer(...handlers)
 
 beforeAll(() => {
@@ -81,7 +83,7 @@ const endpointOf = (method: string): string =>
 
 describe('ChatListPane', () => {
   it('hydrates rows from getChats and renders name, preview, and unread', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    useSessionStore.setState({ credentials: sessionCredentials(), status: 'connected' })
     mockGateway.chats.push(...DEMO_CHATS)
 
     renderPane()
@@ -91,7 +93,7 @@ describe('ChatListPane', () => {
   })
 
   it('backfills last-message previews in the background without unread inflation', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    useSessionStore.setState({ credentials: sessionCredentials(), status: 'connected' })
     mockGateway.chats.push(DEMO_CHATS[0] as MockChat)
     mockGateway.messages.push({
       idMessage: 'hist-1',
@@ -112,7 +114,7 @@ describe('ChatListPane', () => {
   })
 
   it('renders hydrated rows inside the virtualized window with measurable cells', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    useSessionStore.setState({ credentials: sessionCredentials(), status: 'connected' })
     mockGateway.chats.push(...DEMO_CHATS)
 
     renderPane()
@@ -130,7 +132,7 @@ describe('ChatListPane', () => {
   })
 
   it('shows the empty state with the new-chat action when no chats exist', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    useSessionStore.setState({ credentials: sessionCredentials(), status: 'connected' })
 
     renderPane()
 
@@ -141,7 +143,7 @@ describe('ChatListPane', () => {
   })
 
   it('filters rows by name through the search field', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    useSessionStore.setState({ credentials: sessionCredentials(), status: 'connected' })
     mockGateway.chats.push(...DEMO_CHATS)
 
     renderPane()
@@ -156,7 +158,7 @@ describe('ChatListPane', () => {
   })
 
   it('reflects the session status in the connection chip', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    useSessionStore.setState({ credentials: sessionCredentials(), status: 'connected' })
 
     renderPane()
 
@@ -167,7 +169,7 @@ describe('ChatListPane', () => {
 
   it('shows the reconnecting chip while the session is degraded', async () => {
     useSessionStore.setState({
-      credentials: CREDENTIALS,
+      credentials: sessionCredentials(),
       status: 'connected',
       reconnecting: true,
     })
@@ -180,7 +182,7 @@ describe('ChatListPane', () => {
   })
 
   it('opens the new chat modal from the FAB', async () => {
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    useSessionStore.setState({ credentials: sessionCredentials(), status: 'connected' })
 
     renderPane()
     fireEvent.click(screen.getByRole('button', { name: i18n.messenger.list.newChatAction }))
@@ -194,7 +196,7 @@ describe('ChatListPane', () => {
       releaseHistory = resolve
     })
     let historyResponses = 0
-    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+    useSessionStore.setState({ credentials: sessionCredentials(), status: 'connected' })
     mockGateway.chats.push(DEMO_CHATS[0] as MockChat)
     server.use(
       http.post(endpointOf('getChatHistory'), async () => {
