@@ -1,6 +1,6 @@
 # Green API Messenger (Telegram)
 
-A messenger web client built as a **test task for the “Фронтенд разработчик React” position at GREEN-API**. The task targets the MAX messenger via GREEN-API with Telegram explicitly allowed as an alternative — this project implements **Telegram** (the instance was registered and verified); because GREEN-API uses one unified gateway (`/waInstance{id}/{method}/{token}`) across WhatsApp, Telegram, and MAX, the same client can be pointed at a MAX instance by changing only credentials (see `docs/PLAN.md` §2).
+A messenger web client built as a **test task for the job position at GREEN-API**. The task targets the MAX messenger via GREEN-API with Telegram explicitly allowed as an alternative — this project implements **Telegram** (the instance was registered and verified); because GREEN-API uses one unified gateway (`/waInstance{id}/{method}/{token}`) across WhatsApp, Telegram, and MAX, the same client can be pointed at a MAX instance by changing only credentials (see `docs/PLAN.md` §2).
 
 Scope kept deliberately minimal per the task: **text-only messaging** — connect with GREEN-API credentials, create a chat by entering the recipient's phone number, send a message via `sendMessage`, receive replies live via the notification HTTP API long-poll, with a two-pane UI prototyped after [web.max.ru](https://web.max.ru/).
 
@@ -80,15 +80,9 @@ There is no GitHub Actions pipeline by design: Railway builds and deploys `main`
 - `docs/TASKS.md` — build roadmap decomposed into ordered tasks
 - `docs/RESOURCES.md` — research index; `docs/resources/green-api/` — saved official API contract pages
 
-## Security notes
-
-- GREEN-API credentials grant full account access; never commit them, never share screenshots showing the token.
-- Private task files (`followup.txt` with the real token, `taskdesc.txt`, `redirect.pdf`) are gitignored — they stay local forever.
-- Rate limits apply per method (see `docs/resources/green-api/ratelimiter.md`); the client will respect them via the per-method rate queue (T1).
-
 ## Deployment
 
-The app is a pure static SPA (GREEN-API sends `Access-Control-Allow-Origin: *` — verified live; no backend by design). Production runs on **Railway.com** as an nginx Docker container; Railway is the delivery pipeline (there is no GitHub Actions pipeline). There is no platform config file in-repo: Railway auto-detects the root `Dockerfile` and builds it directly, and the deploy-time healthcheck is a one-time service setting (Railway deprecated Config as Code files, hard cutoff 2026-12-01; the Infrastructure-as-Code replacement would need the `railway` SDK + CLI apply for a single static service, so dashboard settings carry it instead). Repo config:
+The app is a pure static SPA (GREEN-API sends `Access-Control-Allow-Origin: *` — verified live; no backend by design). Production runs on **Railway.com** as an nginx Docker container; Railway is the delivery pipeline (there is no GitHub Actions pipeline). There is no platform config file in-repo: Railway auto-detects the root `Dockerfile` and builds it directly, and the deploy-time healthcheck is a one-time service setting. Repo config:
 
 | File                | Role                                                                                                                                                                                                                                                                                                 |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
