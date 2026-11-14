@@ -25,20 +25,12 @@
 .scroll {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-bottom: 14px;
-}
-
-.scroll[data-empty] {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
 }
 
 .rows {
   position: relative;
+  margin-top: auto;
+  padding-bottom: 14px;
 }
 
 .rowCell {
@@ -47,6 +39,16 @@
   left: 0;
   width: 100%;
   padding: 0 18px;
+}
+
+.historyLoading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 10px 0;
 }
 
 .substate {

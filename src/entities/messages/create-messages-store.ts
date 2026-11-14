@@ -3,6 +3,7 @@ import type {
   ApiError,
   ChatHistoryArgs,
   GreenApiCredentials,
+  GreenApiFacadeOptions,
   GreenApiHistoryItem,
   Message,
   MessageNotificationEvent,
@@ -25,6 +26,7 @@ export type MessagesGateway = {
   getChatHistory(
     credentials: GreenApiCredentials,
     args: ChatHistoryArgs,
+    options?: GreenApiFacadeOptions,
   ): Promise<GreenApiHistoryItem[]>
 }
 
@@ -52,26 +54,46 @@ export type MessagesState = {
 const compareMessages = (a: Message, b: Message): number =>
   a.timestamp - b.timestamp || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 
+const NEAR_MATCH_WINDOW_MS = 2000
+
+const matchesMessage = (candidate: Message, incoming: Message): boolean => {
+  if (candidate.id === incoming.id) {
+    return true
+  }
+  return (
+    candidate.direction === incoming.direction &&
+    candidate.text === incoming.text &&
+    Math.abs(candidate.timestamp - incoming.timestamp) <= NEAR_MATCH_WINDOW_MS
+  )
+}
+
+const escalatesFrom = (current: Message, next: Message): boolean =>
+  next.status !== null && escalatesDeliveryStatus(current.status, next.status)
+
 const mergeMessages = (
   existing: readonly Message[],
   additions: readonly Message[],
 ): readonly Message[] | null => {
-  const byId = new Map<string, Message>()
-  for (const message of existing) {
-    byId.set(message.id, message)
-  }
+  const result = [...existing]
   let changed = false
   for (const addition of additions) {
-    if (byId.has(addition.id)) {
+    const matchIndex = result.findIndex((candidate) => matchesMessage(candidate, addition))
+    if (matchIndex === -1) {
+      result.push(addition)
+      changed = true
       continue
     }
-    byId.set(addition.id, addition)
+    const match = result[matchIndex]
+    if (match === undefined || !escalatesFrom(match, addition)) {
+      continue
+    }
+    result[matchIndex] = { ...match, status: addition.status }
     changed = true
   }
   if (!changed) {
     return null
   }
-  return [...byId.values()].sort(compareMessages)
+  return result.sort(compareMessages)
 }
 
 const isMessageValue = (value: unknown): value is Message => {
@@ -254,21 +276,20 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
         const { message } = event
         const { byChat } = get()
         const messages = byChat[message.chatId] ?? []
-        const hasId = messages.some((candidate) => candidate.id === message.id)
         const pendingIndex = messages.findIndex(
           (candidate) =>
             candidate.status === 'pending' &&
             candidate.direction === 'outgoing' &&
             candidate.text === message.text,
         )
-        if (hasId && pendingIndex === -1) {
-          return false
-        }
-        if (pendingIndex >= 0 && !hasId) {
+        if (pendingIndex >= 0) {
           const next = [...messages]
           next[pendingIndex] = message
           commitChat(message.chatId, next.sort(compareMessages))
           return true
+        }
+        if (messages.some((candidate) => matchesMessage(candidate, message))) {
+          return false
         }
         const merged = mergeMessages(messages, [message])
         if (merged === null) {
@@ -311,10 +332,14 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
           const { history } = get()
           set({ history: { ...history, [chatId]: 'loading' } })
           try {
-            const items = await deps.gateway.getChatHistory(credentials, {
-              chatId,
-              count: deps.capacityPerChat,
-            })
+            const items = await deps.gateway.getChatHistory(
+              credentials,
+              {
+                chatId,
+                count: deps.capacityPerChat,
+              },
+              { priority: 'user' },
+            )
             if (generation !== startedGeneration) {
               return 'failed'
             }

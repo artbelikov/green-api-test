@@ -4,15 +4,25 @@ export type Clock = {
   random(): number
 }
 
+export type RateQueuePriority = 'user' | 'background'
+
 export type RateQueueOptions = {
   readonly clock?: Clock
   readonly jitterRatio?: number
 }
 
+type QueueEntry = {
+  readonly task: () => Promise<unknown>
+  readonly priority: RateQueuePriority
+  readonly resolve: (value: unknown) => void
+  readonly reject: (reason: unknown) => void
+}
+
 type Slot = {
   readonly limit: number
-  chain: Promise<void>
   lastRun: number
+  readonly entries: QueueEntry[]
+  running: boolean
 }
 
 const realClock: Clock = {
@@ -41,16 +51,21 @@ export class RateQueue {
     this.#jitterRatio = options.jitterRatio ?? 0.15
   }
 
-  enqueue<T>(method: string, task: () => Promise<T>, coalesceId?: string): Promise<T> {
+  enqueue<T>(
+    method: string,
+    task: () => Promise<T>,
+    coalesceId?: string,
+    priority: RateQueuePriority = 'background',
+  ): Promise<T> {
     if (coalesceId === undefined) {
-      return this.#dispatch(method, task)
+      return this.#dispatch(method, task, priority)
     }
     const dedupeKey = `${method}::${coalesceId}`
     const pending = this.#inFlight.get(dedupeKey)
     if (pending) {
       return pending as Promise<T>
     }
-    const promise = this.#dispatch(method, task)
+    const promise = this.#dispatch(method, task, priority)
     const forget = (): void => {
       this.#inFlight.delete(dedupeKey)
     }
@@ -59,24 +74,56 @@ export class RateQueue {
     return promise
   }
 
-  #dispatch<T>(method: string, task: () => Promise<T>): Promise<T> {
+  #dispatch<T>(method: string, task: () => Promise<T>, priority: RateQueuePriority): Promise<T> {
     const slot = this.#slotFor(method)
-    const minimumGapMs = 1000 / slot.limit
-    const tail = slot.chain.then(async () => {
-      const jitterFactor = 1 + this.#clock.random() * this.#jitterRatio
-      const targetStart = slot.lastRun + minimumGapMs * jitterFactor
-      const delayMs = targetStart - this.#clock.now()
-      if (delayMs > 0) {
-        await waitFor(this.#clock, delayMs)
-      }
-      slot.lastRun = this.#clock.now()
-      return task()
+    return new Promise<T>((resolve, reject) => {
+      slot.entries.push({
+        task,
+        priority,
+        resolve: resolve as (value: unknown) => void,
+        reject,
+      })
+      this.#pump(slot)
     })
-    slot.chain = tail.then(
-      () => undefined,
-      () => undefined,
-    )
-    return tail
+  }
+
+  #pump(slot: Slot): void {
+    if (slot.running) {
+      return
+    }
+    slot.running = true
+    void (async () => {
+      while (slot.entries.length > 0) {
+        const jitterFactor = 1 + this.#clock.random() * this.#jitterRatio
+        const minimumGapMs = 1000 / slot.limit
+        const targetStart = slot.lastRun + minimumGapMs * jitterFactor
+        const delayMs = targetStart - this.#clock.now()
+        if (delayMs > 0) {
+          await waitFor(this.#clock, delayMs)
+        }
+        const entry = this.#pickNext(slot)
+        if (entry === undefined) {
+          break
+        }
+        try {
+          slot.lastRun = this.#clock.now()
+          entry.resolve(await entry.task())
+        } catch (error) {
+          entry.reject(error)
+        }
+      }
+      slot.running = false
+    })()
+  }
+
+  #pickNext(slot: Slot): QueueEntry | undefined {
+    const userIndex = slot.entries.findIndex((entry) => entry.priority === 'user')
+    const entryIndex = userIndex === -1 ? 0 : userIndex
+    const entry = slot.entries[entryIndex]
+    if (entry !== undefined) {
+      slot.entries.splice(entryIndex, 1)
+    }
+    return entry
   }
 
   #slotFor(method: string): Slot {
@@ -90,8 +137,9 @@ export class RateQueue {
     }
     const slot: Slot = {
       limit,
-      chain: Promise.resolve(),
       lastRun: Number.NEGATIVE_INFINITY,
+      entries: [],
+      running: false,
     }
     this.#slots.set(method, slot)
     return slot

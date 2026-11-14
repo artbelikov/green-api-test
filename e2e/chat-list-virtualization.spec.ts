@@ -14,12 +14,12 @@ const fillerDeliveries = Array.from({ length: FILLER_CHATS }, (_, index) => ({
 const scrollRowsContainer = async (page: Page, deltaY: number): Promise<boolean> => {
   const atBottom = await page.evaluate((step) => {
     const cell = document.querySelector('aside [data-index]')
-    const scrollEl = cell?.parentElement?.parentElement
-    if (!(scrollEl instanceof HTMLElement)) {
+    const viewport = cell?.closest('[data-scrollarea-viewport]')
+    if (!(viewport instanceof HTMLElement)) {
       return false
     }
-    scrollEl.scrollTop += step
-    return scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 12
+    viewport.scrollTop += step
+    return viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 12
   }, deltaY)
   return atBottom
 }

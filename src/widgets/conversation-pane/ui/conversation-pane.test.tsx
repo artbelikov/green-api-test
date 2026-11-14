@@ -1,4 +1,4 @@
-import { MantineProvider } from '@mantine/core'
+import { MantineProvider, ScrollArea } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { HttpResponse, http } from 'msw'
@@ -99,11 +99,15 @@ const renderPane = (): void => {
 }
 
 const scrollElement = (): HTMLElement => {
-  const node = document.querySelector(`.${SCROLL_CLASS}`)
-  if (!(node instanceof HTMLElement)) {
-    throw new Error('scroll element not found')
+  const root = document.querySelector(`.${SCROLL_CLASS}`)
+  if (!(root instanceof HTMLElement)) {
+    throw new Error('scroll root not found')
   }
-  return node
+  const viewport = root.querySelector(`.${ScrollArea.classes.viewport}`)
+  if (!(viewport instanceof HTMLElement)) {
+    throw new Error('scroll viewport not found')
+  }
+  return viewport
 }
 
 const jumpPill = (): HTMLElement => {
@@ -135,7 +139,7 @@ describe('ConversationPane', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'Demo Contact' })).toBeInTheDocument()
     expect(screen.getByText('@demo_contact')).toBeInTheDocument()
     const region = screen.getByRole('region', { name: i18n.messenger.conversation.messagesRegion })
-    expect(region).toHaveAttribute('tabindex', '0')
+    expect(region.querySelector(`.${ScrollArea.classes.viewport}`)).toHaveAttribute('tabindex', '0')
     expect(screen.getByText(i18n.messenger.conversation.emptyHistory)).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: i18n.messenger.conversation.backAction }),
@@ -250,6 +254,21 @@ describe('ConversationPane', () => {
 
     expect(mocks.scrollToOffset.mock.calls.length).toBeGreaterThan(callsBeforeAppend)
     expect(mocks.scrollToOffset).toHaveBeenCalledWith(288, { align: 'end' })
+  })
+
+  it('keeps a history-loading affordance visible below a partially hydrated list', () => {
+    seedMessages([message('m1', new Date(2026, 10, 13, 9, 0))])
+    useMessagesStore.setState({ history: { [CHAT.id]: 'loading' } } as Partial<MessagesState>)
+
+    renderPane()
+
+    expect(document.querySelector(`.${classes.historyLoading}`)).not.toBeNull()
+
+    act(() => {
+      useMessagesStore.setState({ history: { [CHAT.id]: 'ready' } } as Partial<MessagesState>)
+    })
+
+    expect(document.querySelector(`.${classes.historyLoading}`)).toBeNull()
   })
 
   it('shows the back chevron on mobile and reports back navigation', () => {

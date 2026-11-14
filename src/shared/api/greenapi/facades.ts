@@ -4,7 +4,7 @@ import {
   type GreenApiCredentials,
   greenApiRequest,
 } from './http-client'
-import { GREEN_API_RATE_LIMITS, RateQueue } from './rate-queue'
+import { GREEN_API_RATE_LIMITS, RateQueue, type RateQueuePriority } from './rate-queue'
 import type {
   GreenApiAvatar,
   GreenApiChatListItem,
@@ -24,6 +24,7 @@ import type {
 export type GreenApiFacadeOptions = {
   readonly signal?: AbortSignal | undefined
   readonly timeoutMs?: number | undefined
+  readonly priority?: RateQueuePriority | undefined
 }
 
 export type SendMessageArgs = {
@@ -79,6 +80,7 @@ export async function getChatHistory(
         timeoutMs: options.timeoutMs,
       }),
     coalesceKey(credentials, `${args.chatId}:${args.count}`),
+    options.priority ?? 'background',
   )
 }
 

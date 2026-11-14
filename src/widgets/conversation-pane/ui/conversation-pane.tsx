@@ -1,4 +1,14 @@
-import { ActionIcon, Button, Skeleton, Stack, Text, Title, useMantineTheme } from '@mantine/core'
+import {
+  ActionIcon,
+  Button,
+  Loader,
+  ScrollArea,
+  Skeleton,
+  Stack,
+  Text,
+  Title,
+  useMantineTheme,
+} from '@mantine/core'
 import { IconArrowDown, IconChevronLeft } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { UIEvent } from 'react'
@@ -18,10 +28,24 @@ import classes from './conversation-pane.module.css'
 
 const SKELETON_KEYS = ['s1', 's2', 's3', 's4', 's5']
 
+const CONTENT_ROWS_STYLE = {
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: '100%',
+} as const
+const CONTENT_SUBSTATE_STYLE = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: '100%',
+  padding: 24,
+} as const
+
 const DIVIDER_ROW_HEIGHT = 44
 const BUBBLE_ROW_BASE = 48
 const MESSAGE_LINE_HEIGHT = 20
 const ESTIMATED_CHARS_PER_LINE = 48
+const HISTORY_LOADING_FOOTER_ALLOWANCE_PX = 56
 
 export type ConversationChat = {
   readonly id: string
@@ -51,7 +75,7 @@ export function ConversationPane({ chat, isMobile, onBack }: ConversationPanePro
     [messages, nowMs],
   )
 
-  const scrollRef = useRef<HTMLElement | null>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
   const [pinned, setPinned] = useState(true)
   const pinnedRef = useRef(true)
 
@@ -76,14 +100,15 @@ export function ConversationPane({ chat, isMobile, onBack }: ConversationPanePro
     if (!pinnedRef.current || rows.length === 0) {
       return
     }
-    virtualizer.scrollToOffset(virtualizer.getTotalSize(), { align: 'end' })
+    const loadingAllowance = historyPhase === 'loading' ? HISTORY_LOADING_FOOTER_ALLOWANCE_PX : 0
+    virtualizer.scrollToOffset(virtualizer.getTotalSize() + loadingAllowance, { align: 'end' })
     const frame = requestAnimationFrame(() => {
       if (pinnedRef.current) {
-        virtualizer.scrollToOffset(virtualizer.getTotalSize(), { align: 'end' })
+        virtualizer.scrollToOffset(virtualizer.getTotalSize() + loadingAllowance, { align: 'end' })
       }
     })
     return () => cancelAnimationFrame(frame)
-  }, [rows, virtualizer])
+  }, [rows, virtualizer, historyPhase])
 
   const handleScroll = (event: UIEvent<HTMLDivElement>): void => {
     const element = event.currentTarget
@@ -126,13 +151,17 @@ export function ConversationPane({ chat, isMobile, onBack }: ConversationPanePro
           {subtitle !== null ? <Text className={classes.subtitle}>{subtitle}</Text> : null}
         </div>
       </header>
-      <section
-        ref={scrollRef}
+      <ScrollArea
         className={classes.scroll}
+        role="region"
         aria-label={i18n.messenger.conversation.messagesRegion}
-        tabIndex={0}
         data-empty={isEmpty || undefined}
-        onScroll={handleScroll}
+        scrollbars="y"
+        overscrollBehavior="contain"
+        scrollbarSize={8}
+        viewportRef={scrollRef}
+        viewportProps={{ tabIndex: 0, onScroll: handleScroll }}
+        styles={{ content: isEmpty ? CONTENT_SUBSTATE_STYLE : CONTENT_ROWS_STYLE }}
       >
         {isEmpty ? (
           <div className={classes.substate}>
@@ -197,9 +226,17 @@ export function ConversationPane({ chat, isMobile, onBack }: ConversationPanePro
                 </div>
               )
             })}
+            {historyPhase === 'loading' ? (
+              <div
+                className={classes.historyLoading}
+                style={{ transform: `translateY(${virtualizer.getTotalSize()}px)` }}
+              >
+                <Loader size="xs" aria-hidden="true" />
+              </div>
+            ) : null}
           </div>
         )}
-      </section>
+      </ScrollArea>
       <MessageComposer chatId={chat.id} />
       <ActionIcon
         className={classes.jump}

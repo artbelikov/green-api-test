@@ -461,6 +461,191 @@ describe('createMessagesStore — history hydration', () => {
   })
 })
 
+describe('createMessagesStore — cross-source dedupe', () => {
+  const nearMatchId = (timestampMs: number, millisecondSuffix: number): string =>
+    `${Math.floor(timestampMs / 1000)}${String(millisecondSuffix).padStart(3, '0')}`
+
+  it('drops the journal copy of a message that already arrived through a webhook', async () => {
+    const timestampMs = 1_794_647_009_000
+    const store = createStore({
+      gateway: {
+        getChatHistory: async () => [
+          {
+            type: 'incoming',
+            idMessage: nearMatchId(timestampMs, 25),
+            timestamp: timestampMs / 1000,
+            typeMessage: 'textMessage',
+            chatId: 'chat-1',
+            textMessage: 'same text',
+          },
+        ],
+      },
+    })
+    expect(
+      store.getState().applyMessageEvent(
+        createLiveMessageEvent({
+          id: nearMatchId(timestampMs, 871),
+          text: 'same text',
+          timestamp: timestampMs,
+        }),
+      ),
+    ).toBe(true)
+
+    expect(await store.getState().loadChatHistory('chat-1', CREDENTIALS)).toBe('ready')
+
+    expect(store.getState().byChat['chat-1']).toHaveLength(1)
+    expect(store.getState().byChat['chat-1']?.[0]?.id).toBe(nearMatchId(timestampMs, 871))
+  })
+
+  it('keeps a single bubble when the history copy lands before the webhook redelivery', () => {
+    const timestampMs = 1_794_647_009_500
+    const store = createStore()
+    expect(
+      store.getState().applyMessageEvent(
+        createLiveMessageEvent({
+          id: 'journal-id-1',
+          text: 'same text',
+          timestamp: timestampMs,
+        }),
+      ),
+    ).toBe(true)
+
+    expect(
+      store.getState().applyMessageEvent(
+        createLiveMessageEvent({
+          id: nearMatchId(timestampMs, 123),
+          text: 'same text',
+          timestamp: timestampMs + 300,
+        }),
+      ),
+    ).toBe(false)
+    expect(store.getState().byChat['chat-1']).toHaveLength(1)
+  })
+
+  it('escalates the delivery status when the journal knows more than the webhook copy', async () => {
+    const timestampMs = 1_794_647_009_000
+    const store = createStore({
+      gateway: {
+        getChatHistory: async () => [
+          {
+            type: 'outgoing',
+            idMessage: nearMatchId(timestampMs, 25),
+            timestamp: timestampMs / 1000,
+            typeMessage: 'textMessage',
+            chatId: 'chat-1',
+            textMessage: 'same text',
+            statusMessage: 'delivered',
+          },
+        ],
+      },
+    })
+    expect(
+      store.getState().applyMessageEvent(
+        createLiveMessageEvent({
+          id: 'webhook-id-1',
+          direction: 'outgoing',
+          text: 'same text',
+          timestamp: timestampMs,
+          status: 'sent',
+        }),
+      ),
+    ).toBe(true)
+
+    expect(await store.getState().loadChatHistory('chat-1', CREDENTIALS)).toBe('ready')
+
+    const messages = store.getState().byChat['chat-1'] ?? []
+    expect(messages).toHaveLength(1)
+    expect(messages[0]).toMatchObject({ id: 'webhook-id-1', status: 'delivered' })
+  })
+
+  it('keeps genuinely repeated identical texts outside the timestamp window', () => {
+    const store = createStore()
+    expect(
+      store
+        .getState()
+        .applyMessageEvent(createLiveMessageEvent({ id: 'a-1', text: 'ok', timestamp: 100_000 })),
+    ).toBe(true)
+    expect(
+      store
+        .getState()
+        .applyMessageEvent(createLiveMessageEvent({ id: 'a-2', text: 'ok', timestamp: 103_500 })),
+    ).toBe(true)
+
+    expect(store.getState().byChat['chat-1']).toHaveLength(2)
+  })
+
+  it('honours direction when matching across sources', () => {
+    const timestampMs = 1_794_647_009_000
+    const store = createStore()
+    expect(
+      store.getState().applyMessageEvent(
+        createLiveMessageEvent({
+          id: 'out-1',
+          direction: 'outgoing',
+          text: 'same text',
+          timestamp: timestampMs,
+        }),
+      ),
+    ).toBe(true)
+    expect(
+      store.getState().applyMessageEvent(
+        createLiveMessageEvent({
+          id: 'in-1',
+          direction: 'incoming',
+          text: 'same text',
+          timestamp: timestampMs,
+        }),
+      ),
+    ).toBe(true)
+
+    expect(store.getState().byChat['chat-1']).toHaveLength(2)
+  })
+
+  it('requests user priority for the opened-chat history fetch', async () => {
+    const seenOptions: Array<unknown> = []
+    const store = createStore({
+      gateway: {
+        getChatHistory: async (_credentials, _args, options) => {
+          seenOptions.push(options)
+          return []
+        },
+      },
+    })
+
+    await store.getState().loadChatHistory('chat-1', CREDENTIALS)
+
+    expect(seenOptions).toEqual([{ priority: 'user' }])
+  })
+
+  it('still dedupes exact identical ids across sources', async () => {
+    const store = createStore({
+      gateway: {
+        getChatHistory: async () => [
+          {
+            type: 'incoming',
+            idMessage: 'same-id',
+            timestamp: 1_000,
+            typeMessage: 'textMessage',
+            chatId: 'chat-1',
+            textMessage: 'same text',
+          },
+        ],
+      },
+    })
+    expect(
+      store
+        .getState()
+        .applyMessageEvent(
+          createLiveMessageEvent({ id: 'same-id', text: 'same text', timestamp: 1_000 }),
+        ),
+    ).toBe(true)
+
+    expect(await store.getState().loadChatHistory('chat-1', CREDENTIALS)).toBe('ready')
+
+    expect(store.getState().byChat['chat-1']).toHaveLength(1)
+  })
+})
+
 describe('createMessagesStore — capacity and persistence', () => {
   it('caps each chat at the configured capacity keeping the newest messages', () => {
     const store = createStore({ capacityPerChat: 200 })

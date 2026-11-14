@@ -225,4 +225,95 @@ describe('RateQueue', () => {
 
     expect(() => queue.enqueue('unknown', async () => 'x')).toThrow('No rate limit configured')
   })
+
+  it('runs a user-priority task before queued background tasks of the same method', async () => {
+    const clock = new ManualClock([0, 0, 0, 0])
+    const queue = new RateQueue({ history: 1 }, { clock })
+    const startTimes: string[] = []
+
+    const running = queue.enqueue('history', async () => {
+      startTimes.push(`running:${clock.now()}`)
+      return 'running'
+    })
+    await settle()
+    await expect(running).resolves.toBe('running')
+
+    const backgroundFirst = queue.enqueue(
+      'history',
+      async () => {
+        startTimes.push(`background-first:${clock.now()}`)
+        return 'background-first'
+      },
+      'background-first',
+    )
+    const backgroundSecond = queue.enqueue(
+      'history',
+      async () => {
+        startTimes.push(`background-second:${clock.now()}`)
+        return 'background-second'
+      },
+      'background-second',
+    )
+    const user = queue.enqueue(
+      'history',
+      async () => {
+        startTimes.push(`user:${clock.now()}`)
+        return 'user'
+      },
+      'user-submit',
+      'user',
+    )
+
+    clock.advance(1000)
+    await settle()
+    await expect(user).resolves.toBe('user')
+
+    clock.advance(1000)
+    await settle()
+    await expect(backgroundFirst).resolves.toBe('background-first')
+
+    clock.advance(1000)
+    await settle()
+    await expect(backgroundSecond).resolves.toBe('background-second')
+    expect(startTimes).toEqual([
+      'running:0',
+      'user:1000',
+      'background-first:2000',
+      'background-second:3000',
+    ])
+  })
+
+  it('never interrupts a running background task when a user task arrives', async () => {
+    const clock = new ManualClock()
+    const queue = new RateQueue({ history: 1 }, { clock })
+    const startTimes: string[] = []
+
+    const running = queue.enqueue('history', async () => {
+      startTimes.push(`running:${clock.now()}`)
+      return 'running'
+    })
+    const background = queue.enqueue('history', async () => {
+      startTimes.push(`background:${clock.now()}`)
+      return 'background'
+    })
+    const user = queue.enqueue(
+      'history',
+      async () => {
+        startTimes.push(`user:${clock.now()}`)
+        return 'user'
+      },
+      undefined,
+      'user',
+    )
+    await settle()
+    await expect(running).resolves.toBe('running')
+
+    clock.advance(1000)
+    await settle()
+    await expect(user).resolves.toBe('user')
+    clock.advance(1000)
+    await settle()
+    await expect(background).resolves.toBe('background')
+    expect(startTimes).toEqual(['running:0', 'user:1000', 'background:2000'])
+  })
 })

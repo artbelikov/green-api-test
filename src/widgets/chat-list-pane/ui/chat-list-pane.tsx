@@ -3,6 +3,7 @@ import {
   Alert,
   Badge,
   Button,
+  ScrollArea,
   Skeleton,
   Stack,
   Text,
@@ -30,6 +31,13 @@ const STATUS_COLORS = {
   connecting: 'yellow',
   reconnecting: 'yellow',
   disconnected: 'gray',
+} as const
+
+const CONTENT_ROWS_STYLE = { display: 'block' } as const
+const CONTENT_STATE_STYLE = {
+  display: 'flex',
+  flexDirection: 'column',
+  minHeight: '100%',
 } as const
 
 export function ChatListPane() {
@@ -103,7 +111,15 @@ export function ChatListPane() {
           {i18n.session.settlingNotice}
         </Alert>
       ) : null}
-      <div ref={scrollRef} className={classes.rows} data-empty={isEmpty || undefined}>
+      <ScrollArea
+        className={classes.rows}
+        data-empty={isEmpty || undefined}
+        scrollbars="y"
+        overscrollBehavior="contain"
+        scrollbarSize={8}
+        viewportRef={scrollRef}
+        styles={{ content: isEmpty || loading ? CONTENT_STATE_STYLE : CONTENT_ROWS_STYLE }}
+      >
         {loading && isEmpty ? (
           <Stack gap="sm" className={classes.skeleton}>
             {SKELETON_KEYS.map((key) => (
@@ -158,7 +174,7 @@ export function ChatListPane() {
             })}
           </div>
         ) : null}
-      </div>
+      </ScrollArea>
       <NewChatModal opened={modalOpen} onClose={() => setModalOpen(false)} />
     </aside>
   )

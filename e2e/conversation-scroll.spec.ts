@@ -48,8 +48,7 @@ test('the conversation virtualizes long histories and keeps autoscroll pinned', 
 const renderedRowCount = async (page: Page): Promise<number> =>
   page.evaluate(() => {
     const region = document.querySelector('[aria-label="Messages"]')
-    const rowsContainer = region?.firstElementChild
-    return rowsContainer?.childElementCount ?? -1
+    return region?.querySelectorAll('[data-index]').length ?? -1
   })
 
 const scrollConversation = async (page: Page, deltaY: number): Promise<void> => {
