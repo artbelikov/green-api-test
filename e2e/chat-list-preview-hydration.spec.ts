@@ -96,3 +96,43 @@ test('previews hydrate for the rendered window and keep filling as rows scroll i
   await page.waitForTimeout(1500)
   expect(await captureChatOrder(page)).toEqual(orderAtStart)
 })
+
+test('a rapid wheel storm still hydrates the final window through the rate queue', async ({
+  page,
+}) => {
+  test.setTimeout(180_000)
+  await page.goto('/?mock=1')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(i18n.connect.heading)
+
+  const seeded = await page.evaluate(
+    ({ chats, messages }) => {
+      const gateway = window.mockGateway
+      if (!gateway) {
+        return 'no gateway'
+      }
+      for (const chat of chats) {
+        gateway.chats.push(chat)
+      }
+      for (const message of messages) {
+        gateway.messages.push(message)
+      }
+      return `chats:${gateway.chats.length}`
+    },
+    { chats: fillerChats, messages: journalMessages },
+  )
+  expect(seeded).toBe(`chats:${CHAT_COUNT}`)
+
+  await page.getByRole('button', { name: i18n.connect.connectAction }).click()
+  await expect(page.getByRole('heading', { name: i18n.messenger.list.heading })).toBeVisible()
+  await expect(page.locator('aside [data-index]').first()).toBeVisible()
+
+  await page.locator('aside [data-scrollarea-viewport]').hover()
+  for (let burst = 0; burst < 30; burst += 1) {
+    await page.mouse.wheel(0, 400)
+    await page.waitForTimeout(70)
+  }
+  await expect(page.locator('aside [data-index]').last()).not.toContainText(
+    i18n.messenger.list.noMessagesYet,
+    { timeout: 60_000 },
+  )
+})

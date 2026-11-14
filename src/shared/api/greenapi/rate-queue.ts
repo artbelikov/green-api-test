@@ -14,9 +14,14 @@ export type RateQueueOptions = {
 type QueueEntry = {
   readonly task: () => Promise<unknown>
   readonly priority: RateQueuePriority
+  readonly signal: AbortSignal | undefined
+  readonly detachAbortListener: () => void
   readonly resolve: (value: unknown) => void
   readonly reject: (reason: unknown) => void
 }
+
+const abortedBeforeDispatch = (): DOMException =>
+  new DOMException('The task was aborted before dispatch', 'AbortError')
 
 type Slot = {
   readonly limit: number
@@ -56,16 +61,17 @@ export class RateQueue {
     task: () => Promise<T>,
     coalesceId?: string,
     priority: RateQueuePriority = 'background',
+    signal?: AbortSignal,
   ): Promise<T> {
     if (coalesceId === undefined) {
-      return this.#dispatch(method, task, priority)
+      return this.#dispatch(method, task, priority, signal)
     }
     const dedupeKey = `${method}::${coalesceId}`
     const pending = this.#inFlight.get(dedupeKey)
     if (pending) {
       return pending as Promise<T>
     }
-    const promise = this.#dispatch(method, task, priority)
+    const promise = this.#dispatch(method, task, priority, signal)
     const forget = (): void => {
       this.#inFlight.delete(dedupeKey)
     }
@@ -74,15 +80,39 @@ export class RateQueue {
     return promise
   }
 
-  #dispatch<T>(method: string, task: () => Promise<T>, priority: RateQueuePriority): Promise<T> {
+  #dispatch<T>(
+    method: string,
+    task: () => Promise<T>,
+    priority: RateQueuePriority,
+    signal?: AbortSignal,
+  ): Promise<T> {
     const slot = this.#slotFor(method)
     return new Promise<T>((resolve, reject) => {
-      slot.entries.push({
+      if (signal?.aborted) {
+        reject(abortedBeforeDispatch())
+        return
+      }
+      const entry: QueueEntry = {
         task,
         priority,
+        signal,
+        detachAbortListener: () => {
+          if (signal !== undefined) {
+            signal.removeEventListener('abort', eject)
+          }
+        },
         resolve: resolve as (value: unknown) => void,
         reject,
-      })
+      }
+      const eject = (): void => {
+        const index = slot.entries.indexOf(entry)
+        if (index >= 0) {
+          slot.entries.splice(index, 1)
+        }
+        entry.reject(abortedBeforeDispatch())
+      }
+      slot.entries.push(entry)
+      signal?.addEventListener('abort', eject, { once: true })
       this.#pump(slot)
     })
   }
@@ -106,9 +136,11 @@ export class RateQueue {
           if (entry === undefined) {
             break
           }
+          entry.detachAbortListener()
           try {
             slot.lastRun = this.#clock.now()
-            entry.resolve(await entry.task())
+            const value = await entry.task()
+            entry.resolve(value)
           } catch (error) {
             entry.reject(error)
           }

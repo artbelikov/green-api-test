@@ -342,6 +342,75 @@ describe('RateQueue', () => {
     expect(startTimes).toEqual(['running:0', 'user:1000', 'background:2000'])
   })
 
+  it('ejects an aborted queued entry the moment its signal fires, without spending the rate gap', async () => {
+    const clock = new ManualClock([0, 0])
+    const queue = new RateQueue({ history: 1 }, { clock })
+    const startTimes: string[] = []
+
+    const running = queue.enqueue('history', async () => {
+      startTimes.push(`running:${clock.now()}`)
+      return 'running'
+    })
+    await settle()
+    await expect(running).resolves.toBe('running')
+
+    const live = queue.enqueue(
+      'history',
+      async () => {
+        startTimes.push(`live:${clock.now()}`)
+        return 'live'
+      },
+      'live',
+    )
+    const controller = new AbortController()
+    const doomed = queue.enqueue(
+      'history',
+      async () => {
+        startTimes.push(`doomed:${clock.now()}`)
+        return 'doomed'
+      },
+      'doomed',
+      'user',
+      controller.signal,
+    )
+    await settle()
+
+    controller.abort()
+    await expect(doomed).rejects.toThrow(/aborted before dispatch/i)
+    await expect(doomed).rejects.toMatchObject({ name: 'AbortError' })
+    expect(startTimes).toEqual(['running:0'])
+
+    clock.advance(1000)
+    await settle()
+    await expect(live).resolves.toBe('live')
+    expect(startTimes).toEqual(['running:0', 'live:1000'])
+  })
+
+  it('rejects enqueues whose signal is already aborted and keeps the slot untouched', async () => {
+    const clock = new ManualClock([0, 0])
+    const queue = new RateQueue({ history: 1 }, { clock })
+    const startTimes: number[] = []
+
+    const controller = new AbortController()
+    controller.abort()
+    const doomed = queue.enqueue(
+      'history',
+      async () => 'doomed',
+      undefined,
+      'background',
+      controller.signal,
+    )
+    await expect(doomed).rejects.toThrow(/aborted before dispatch/i)
+
+    const live = queue.enqueue('history', async () => {
+      startTimes.push(clock.now())
+      return 'live'
+    })
+    await settle()
+    await expect(live).resolves.toBe('live')
+    expect(startTimes).toEqual([0])
+  })
+
   it('fails fast queued entries when the clock scheduler breaks and recovers', async () => {
     const clock = new FailingScheduleClock()
     const queue = new RateQueue({ history: 1 }, { clock })

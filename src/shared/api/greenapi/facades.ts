@@ -45,21 +45,32 @@ const DEFAULT_RECEIVE_TIMEOUT_MARGIN_SECONDS = 5
 const coalesceKey = (credentials: GreenApiCredentials, ...parts: readonly string[]): string =>
   [credentialsFingerprint(credentials), ...parts].join('::')
 
+const dispatchFacade = <T>(
+  method: string,
+  task: () => Promise<T>,
+  options: GreenApiFacadeOptions,
+  coalesceId?: string,
+): Promise<T> =>
+  rateQueue.enqueue(method, task, coalesceId, options.priority ?? 'background', options.signal)
+
 export async function sendMessage(
   credentials: GreenApiCredentials,
   args: SendMessageArgs,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiSendMessageResult> {
-  return rateQueue.enqueue('sendMessage', () =>
-    greenApiRequest<GreenApiSendMessageResult>(credentials, {
-      endpoint: 'sendMessage',
-      payload: {
-        chatId: args.chatId,
-        message: args.text,
-      },
-      signal: options.signal,
-      timeoutMs: options.timeoutMs,
-    }),
+  return dispatchFacade(
+    'sendMessage',
+    () =>
+      greenApiRequest<GreenApiSendMessageResult>(credentials, {
+        endpoint: 'sendMessage',
+        payload: {
+          chatId: args.chatId,
+          message: args.text,
+        },
+        signal: options.signal,
+        timeoutMs: options.timeoutMs,
+      }),
+    options,
   )
 }
 
@@ -72,7 +83,7 @@ export async function getChatHistory(
     options.coalesce === false
       ? undefined
       : coalesceKey(credentials, `${args.chatId}:${args.count}`)
-  return rateQueue.enqueue(
+  return dispatchFacade(
     'getChatHistory',
     () =>
       greenApiRequest<GreenApiHistoryItem[]>(credentials, {
@@ -84,8 +95,8 @@ export async function getChatHistory(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
+    options,
     coalesceId,
-    options.priority ?? 'background',
   )
 }
 
@@ -93,7 +104,7 @@ export async function getChats(
   credentials: GreenApiCredentials,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiChatListItem[]> {
-  return rateQueue.enqueue(
+  return dispatchFacade(
     'getChats',
     () =>
       greenApiRequest<GreenApiChatListItem[]>(credentials, {
@@ -102,6 +113,7 @@ export async function getChats(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
+    options,
     coalesceKey(credentials, 'all'),
   )
 }
@@ -110,7 +122,7 @@ export async function getContacts(
   credentials: GreenApiCredentials,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiContactsItem[]> {
-  return rateQueue.enqueue(
+  return dispatchFacade(
     'getContacts',
     () =>
       greenApiRequest<GreenApiContactsItem[]>(credentials, {
@@ -119,6 +131,7 @@ export async function getContacts(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
+    options,
     coalesceKey(credentials, 'all'),
   )
 }
@@ -128,7 +141,7 @@ export async function getContactInfo(
   chatId: string,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiContactInfo> {
-  return rateQueue.enqueue(
+  return dispatchFacade(
     'getContactInfo',
     () =>
       greenApiRequest<GreenApiContactInfo>(credentials, {
@@ -137,6 +150,7 @@ export async function getContactInfo(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
+    options,
     coalesceKey(credentials, chatId),
   )
 }
@@ -146,7 +160,7 @@ export async function getAvatar(
   chatId: string,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiAvatar> {
-  return rateQueue.enqueue(
+  return dispatchFacade(
     'getAvatar',
     () =>
       greenApiRequest<GreenApiAvatar>(credentials, {
@@ -155,6 +169,7 @@ export async function getAvatar(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
+    options,
     coalesceKey(credentials, chatId),
   )
 }
@@ -163,7 +178,7 @@ export async function getStateInstance(
   credentials: GreenApiCredentials,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiInstanceState> {
-  return rateQueue.enqueue(
+  return dispatchFacade(
     'getStateInstance',
     () =>
       greenApiRequest<GreenApiInstanceState>(credentials, {
@@ -172,6 +187,7 @@ export async function getStateInstance(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
+    options,
     coalesceKey(credentials, 'state'),
   )
 }
@@ -180,7 +196,7 @@ export async function getSettings(
   credentials: GreenApiCredentials,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiSettingsState> {
-  return rateQueue.enqueue(
+  return dispatchFacade(
     'getSettings',
     () =>
       greenApiRequest<GreenApiSettingsState>(credentials, {
@@ -189,6 +205,7 @@ export async function getSettings(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
+    options,
     coalesceKey(credentials, 'settings'),
   )
 }
@@ -198,13 +215,16 @@ export async function setSettings(
   patch: GreenApiSettingsPatch,
   options: GreenApiFacadeOptions = {},
 ): Promise<void> {
-  await rateQueue.enqueue('setSettings', () =>
-    greenApiRequest<unknown>(credentials, {
-      endpoint: 'setSettings',
-      payload: patch,
-      signal: options.signal,
-      timeoutMs: options.timeoutMs,
-    }),
+  await dispatchFacade(
+    'setSettings',
+    () =>
+      greenApiRequest<unknown>(credentials, {
+        endpoint: 'setSettings',
+        payload: patch,
+        signal: options.signal,
+        timeoutMs: options.timeoutMs,
+      }),
+    options,
   )
 }
 
@@ -213,16 +233,19 @@ export async function receiveNotification(
   receiveTimeoutSeconds: number,
   options: GreenApiFacadeOptions = {},
 ): Promise<ReceivedNotification | null> {
-  const receipt = await rateQueue.enqueue('receiveNotification', () =>
-    greenApiRequest<GreenApiNotificationReceipt | null | undefined>(credentials, {
-      endpoint: 'receiveNotification',
-      verb: 'GET',
-      query: { receiveTimeout: receiveTimeoutSeconds },
-      signal: options.signal,
-      timeoutMs:
-        options.timeoutMs ??
-        (receiveTimeoutSeconds + DEFAULT_RECEIVE_TIMEOUT_MARGIN_SECONDS) * 1000,
-    }),
+  const receipt = await dispatchFacade(
+    'receiveNotification',
+    () =>
+      greenApiRequest<GreenApiNotificationReceipt | null | undefined>(credentials, {
+        endpoint: 'receiveNotification',
+        verb: 'GET',
+        query: { receiveTimeout: receiveTimeoutSeconds },
+        signal: options.signal,
+        timeoutMs:
+          options.timeoutMs ??
+          (receiveTimeoutSeconds + DEFAULT_RECEIVE_TIMEOUT_MARGIN_SECONDS) * 1000,
+      }),
+    options,
   )
   if (receipt === null || receipt === undefined) {
     return null
@@ -244,14 +267,17 @@ export async function deleteNotification(
   receiptId: number,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiDeleteNotificationResult> {
-  return rateQueue.enqueue('deleteNotification', () =>
-    greenApiRequest<GreenApiDeleteNotificationResult>(credentials, {
-      endpoint: 'deleteNotification',
-      pathSuffix: String(receiptId),
-      verb: 'DELETE',
-      signal: options.signal,
-      timeoutMs: options.timeoutMs,
-    }),
+  return dispatchFacade(
+    'deleteNotification',
+    () =>
+      greenApiRequest<GreenApiDeleteNotificationResult>(credentials, {
+        endpoint: 'deleteNotification',
+        pathSuffix: String(receiptId),
+        verb: 'DELETE',
+        signal: options.signal,
+        timeoutMs: options.timeoutMs,
+      }),
+    options,
   )
 }
 
@@ -260,7 +286,7 @@ export async function readChat(
   chatId: string,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiReadChatResult> {
-  return rateQueue.enqueue(
+  return dispatchFacade(
     'readChat',
     () =>
       greenApiRequest<GreenApiReadChatResult>(credentials, {
@@ -269,6 +295,7 @@ export async function readChat(
         signal: options.signal,
         timeoutMs: options.timeoutMs,
       }),
+    options,
     coalesceKey(credentials, chatId),
   )
 }
