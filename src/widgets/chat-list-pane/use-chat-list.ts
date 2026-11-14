@@ -5,14 +5,63 @@ import { useSessionStore } from '@/entities/session'
 import {
   type Chat,
   type GreenApiCredentials,
+  type GreenApiHistoryItem,
   getChatHistory,
   getChats,
+  type Message,
   mapChatListItem,
   mapHistoryMessage,
 } from '@/shared/api/greenapi'
+import { i18n } from '@/shared/config'
 
 const LIST_STALE_TIME_MS = 30_000
 const PREVIEW_HISTORY_COUNT = 1
+
+const MEDIA_PREVIEW_LABELS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/image/i, i18n.messenger.list.media.photo],
+  [/videoMessage/i, i18n.messenger.list.media.videoMessage],
+  [/video/i, i18n.messenger.list.media.video],
+  [/audio/i, i18n.messenger.list.media.audio],
+  [/voice/i, i18n.messenger.list.media.voiceMessage],
+  [/document|file/i, i18n.messenger.list.media.document],
+  [/sticker/i, i18n.messenger.list.media.sticker],
+  [/contact/i, i18n.messenger.list.media.contact],
+  [/location/i, i18n.messenger.list.media.location],
+  [/poll/i, i18n.messenger.list.media.poll],
+]
+
+const previewLabelText = (typeMessage: string | undefined): string =>
+  typeMessage === undefined
+    ? i18n.messenger.list.media.other
+    : (MEDIA_PREVIEW_LABELS.find(([pattern]) => pattern.test(typeMessage))?.[1] ??
+      i18n.messenger.list.media.other)
+
+const previewFromHistory = (history: readonly GreenApiHistoryItem[]): Message | null => {
+  for (const item of history) {
+    const mapped = mapHistoryMessage(item)
+    if (mapped !== null) {
+      return mapped
+    }
+    const { idMessage, chatId, timestamp } = item
+    if (
+      idMessage === undefined ||
+      chatId === undefined ||
+      timestamp === undefined ||
+      item.isDeleted === true
+    ) {
+      continue
+    }
+    return {
+      id: idMessage,
+      chatId,
+      direction: item.type === 'outgoing' ? 'outgoing' : 'incoming',
+      text: previewLabelText(item.typeMessage),
+      timestamp: timestamp * 1000,
+      status: null,
+    }
+  }
+  return null
+}
 
 const hydrateVisiblePreviews = async (
   credentials: GreenApiCredentials,
@@ -27,14 +76,18 @@ const hydrateVisiblePreviews = async (
       continue
     }
     try {
-      const history = await getChatHistory(credentials, {
-        chatId,
-        count: PREVIEW_HISTORY_COUNT,
-      })
+      const history = await getChatHistory(
+        credentials,
+        {
+          chatId,
+          count: PREVIEW_HISTORY_COUNT,
+        },
+        { priority: 'user' },
+      )
       if (useSessionStore.getState().credentials !== credentials) {
         continue
       }
-      const latest = history.map(mapHistoryMessage).find((message) => message !== null) ?? null
+      const latest = previewFromHistory(history)
       if (latest !== null) {
         useChatsStore
           .getState()

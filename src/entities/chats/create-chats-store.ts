@@ -17,7 +17,6 @@ import type {
 const CHATS_STORAGE_KEY = 'green-api-messenger:chats:v1'
 
 export type ChatsStoreDeps = {
-  readonly now: () => number
   readonly storage: KeyValueStore
 }
 
@@ -145,8 +144,7 @@ export function createChatsStore(deps: ChatsStoreDeps) {
         }
         const { summaries } = get()
         const byId = new Map(summaries.map((summary) => [summary.id, summary]))
-        const now = deps.now()
-        for (const chat of chats) {
+        for (const [index, chat] of chats.entries()) {
           const existing = byId.get(chat.id)
           if (existing === undefined) {
             byId.set(chat.id, {
@@ -154,7 +152,7 @@ export function createChatsStore(deps: ChatsStoreDeps) {
               name: chat.name.length > 0 ? chat.name : chat.id,
               unread: 0,
               lastMessage: null,
-              lastActivityAt: now,
+              lastActivityAt: -(index + 1),
             })
             continue
           }

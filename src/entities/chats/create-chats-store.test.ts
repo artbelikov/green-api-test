@@ -46,7 +46,7 @@ describe('createChatsStore', () => {
 
   it('upserts chats sorted by last activity with a deterministic tiebreak', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().upsertChats([chat('111'), chat('222')])
     expect(store.getState().summaries.map((summary) => summary.id)).toEqual(['111', '222'])
@@ -60,7 +60,7 @@ describe('createChatsStore', () => {
 
   it('upserts preserve runtime counters for known chats and refresh identity fields', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: incoming('m1', '111', 'first', now()),
@@ -77,8 +77,8 @@ describe('createChatsStore', () => {
   })
 
   it('upserts fall back to the chat id when the incoming name is empty', () => {
-    const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const { storage } = memory()
+    const store = createChatsStore({ storage })
 
     store.getState().upsertChats([chat('111', { name: '' })])
     expect(store.getState().summaries[0]?.name).toBe('111')
@@ -86,7 +86,7 @@ describe('createChatsStore', () => {
 
   it('upserts an unknown chat from an incoming message using the fallback name', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: incoming('m1', 'unknown-chat', 'is anyone there?', now()),
@@ -106,7 +106,7 @@ describe('createChatsStore', () => {
 
   it('falls back to the chat id when no fallback name is available', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: incoming('m1', 'unknown-chat', 'hello', now()),
@@ -117,7 +117,7 @@ describe('createChatsStore', () => {
 
   it('does not count unread for outgoing messages', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: {
@@ -136,7 +136,7 @@ describe('createChatsStore', () => {
 
   it('does not count unread when the preview is backfilled as a known-read history item', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: incoming('m1', '111', 'from history sweep', now()),
@@ -149,7 +149,7 @@ describe('createChatsStore', () => {
 
   it('does not count unread while the chat is open', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().upsertChats([chat('111')])
     store.getState().openChat('111')
@@ -162,7 +162,7 @@ describe('createChatsStore', () => {
 
   it('enriches a derived chat name from the fallback but keeps resolved names', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store
       .getState()
@@ -184,7 +184,7 @@ describe('createChatsStore', () => {
 
   it('escalates the status tick of the last outgoing preview message', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: {
@@ -209,7 +209,7 @@ describe('createChatsStore', () => {
 
   it('marks delivery failure on the preview tick regardless of current rank', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: {
@@ -228,7 +228,7 @@ describe('createChatsStore', () => {
 
   it('ignores status updates for messages that are not the chat preview', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: incoming('m1', '111', 'hello', now()),
@@ -240,7 +240,7 @@ describe('createChatsStore', () => {
 
   it('opening a chat resets its unread and tracks the active chat', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: incoming('m1', '111', 'hello', now()),
@@ -258,8 +258,8 @@ describe('createChatsStore', () => {
   })
 
   it('sets the active chat even when the summary is unknown and clears it on close', () => {
-    const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const { storage } = memory()
+    const store = createChatsStore({ storage })
 
     store.getState().openChat('ghost')
     expect(store.getState().activeChatId).toBe('ghost')
@@ -269,7 +269,7 @@ describe('createChatsStore', () => {
 
   it('persists summaries and reloads them in a fresh store instance once the write window elapses', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     vi.useFakeTimers()
     store.getState().applyNewMessage({
@@ -281,7 +281,7 @@ describe('createChatsStore', () => {
 
     vi.advanceTimersByTime(500)
 
-    const revived = createChatsStore({ storage, now })
+    const revived = createChatsStore({ storage })
     expect(revived.getState().summaries).toEqual(store.getState().summaries)
     expect(revived.getState().summaries[0]).toMatchObject({
       id: '111',
@@ -291,17 +291,17 @@ describe('createChatsStore', () => {
   })
 
   it('ignores malformed persisted payloads', () => {
-    const { storage, now } = memory()
+    const { storage } = memory()
     storage.write('green-api-messenger:chats:v1', '{"version":1,"chats":"nope"}')
     storage.write('green-api-messenger:chats:v1', 'not json')
 
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
     expect(store.getState().summaries).toEqual([])
   })
 
   it('clears summaries, active chat, and persisted storage on disconnect', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: incoming('m1', '111', 'hello', now()),
@@ -317,7 +317,7 @@ describe('createChatsStore', () => {
 
   it('keeps the ids ordering stable when timestamps tie', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
     const at = now()
 
     store
@@ -335,7 +335,7 @@ describe('createChatsStore', () => {
 
   it('ignores an event older than the current preview so the sort position never regresses', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: incoming('new', '222', 'fresh', now() + 2_000),
@@ -359,7 +359,7 @@ describe('createChatsStore', () => {
 
   it('still applies a same-timestamp preview and unknown-chat upserts from out-of-order events', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store
       .getState()
@@ -383,7 +383,7 @@ describe('createChatsStore', () => {
 
   it('flushes the pending summary write on beforeunload', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     store.getState().applyNewMessage({
       message: incoming('m1', '111', 'persisted', now()),
@@ -398,7 +398,7 @@ describe('createChatsStore', () => {
 
   it('cancels the pending write on clear', () => {
     const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const store = createChatsStore({ storage })
 
     vi.useFakeTimers()
     store.getState().applyNewMessage({
@@ -412,8 +412,8 @@ describe('createChatsStore', () => {
   })
 
   it('allows one preview attempt per chat per credentials session', () => {
-    const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const { storage } = memory()
+    const store = createChatsStore({ storage })
     const credentials = {
       apiUrl: 'https://gateway.test',
       idInstance: '110100200',
@@ -426,8 +426,8 @@ describe('createChatsStore', () => {
   })
 
   it('re-attempts a chat when the credentials session changes', () => {
-    const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const { storage } = memory()
+    const store = createChatsStore({ storage })
     const first = {
       apiUrl: 'https://gateway.test',
       idInstance: '110100200',
@@ -442,8 +442,8 @@ describe('createChatsStore', () => {
   })
 
   it('clear() resets preview attempts and the session key', () => {
-    const { storage, now } = memory()
-    const store = createChatsStore({ storage, now })
+    const { storage } = memory()
+    const store = createChatsStore({ storage })
     const credentials = {
       apiUrl: 'https://gateway.test',
       idInstance: '110100200',

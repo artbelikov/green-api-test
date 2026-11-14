@@ -254,4 +254,73 @@ describe('useChatPreviewHydration', () => {
     expect(historyRequests).toEqual([])
     handle.unmount()
   })
+
+  it('labels non-text last messages instead of leaving the preview empty forever', async () => {
+    trackHistoryRequests((chatId, index) => ({
+      status: 200,
+      body: [
+        {
+          type: 'incoming',
+          idMessage: `media-${index}`,
+          timestamp: Math.floor(Date.now() / 1000),
+          chatId,
+          typeMessage: index === 1 ? 'imageMessage' : 'unsupportedKind',
+        },
+      ],
+    }))
+    const credentials = freshCredentials()
+    seedSession(credentials)
+
+    const handle = mountHarness(idsOf(CHATS))
+    await waitForTest(() => {
+      expect(historyRequests).toEqual(idsOf(CHATS))
+    })
+
+    const summaries = useChatsStore.getState().summaries
+    expect(summaries.find((entry) => entry.id === '79000000001')?.lastMessage).toMatchObject({
+      id: 'media-1',
+      text: 'Photo',
+    })
+    expect(summaries.find((entry) => entry.id === '79000000002')?.lastMessage).toMatchObject({
+      id: 'media-2',
+      text: 'Message',
+    })
+    handle.unmount()
+  })
+
+  it('skips deleted journal entries and still mirrors the newest usable copy', async () => {
+    trackHistoryRequests((chatId, index) => ({
+      status: 200,
+      body: [
+        {
+          type: 'incoming',
+          idMessage: `deleted-${index}`,
+          timestamp: Math.floor(Date.now() / 1000),
+          chatId,
+          typeMessage: 'textMessage',
+          textMessage: 'Removed copy',
+          isDeleted: true,
+        },
+        {
+          type: 'incoming',
+          idMessage: `kept-${index}`,
+          timestamp: Math.floor(Date.now() / 1000) - 60,
+          chatId,
+          typeMessage: 'textMessage',
+          textMessage: 'Kept copy',
+        },
+      ],
+    }))
+    const credentials = freshCredentials()
+    seedSession(credentials)
+
+    const handle = mountHarness(idsOf(CHATS.slice(0, 1)))
+    await waitForTest(() => {
+      expect(historyRequests).toEqual(['79000000001'])
+      expect(
+        useChatsStore.getState().summaries.find((entry) => entry.id === '79000000001')?.lastMessage,
+      ).toMatchObject({ id: 'kept-1', text: 'Kept copy' })
+    })
+    handle.unmount()
+  })
 })
