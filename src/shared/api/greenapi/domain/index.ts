@@ -6,6 +6,7 @@ export {
   type MessageDirection,
   type MessageNotificationEvent,
   mapHistoryMessage,
+  matchesMessage,
   type NotificationEvent,
   type StatusNotificationEvent,
 } from './message'

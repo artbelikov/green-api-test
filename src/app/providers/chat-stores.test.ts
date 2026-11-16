@@ -124,30 +124,144 @@ describe('bindChatStores', () => {
       },
     })
 
-    mockGateway.deliverNotification(incomingEnvelope('m1', 'partial hello', 'Дейл'))
-    await vi.waitFor(() => {
-      expect(useChatsStore.getState().summaries[0]).toMatchObject({
-        id: 'chat-1',
-        unread: 1,
-        lastMessage: { id: 'm1' },
+    try {
+      mockGateway.deliverNotification(incomingEnvelope('m1', 'partial hello', 'Дейл'))
+      await vi.waitFor(() => {
+        expect(useChatsStore.getState().summaries[0]).toMatchObject({
+          id: 'chat-1',
+          unread: 1,
+          lastMessage: { id: 'm1' },
+        })
       })
-    })
-    expect(useMessagesStore.getState().byChat['chat-1']).toBeUndefined()
+      expect(useMessagesStore.getState().byChat['chat-1']).toBeUndefined()
 
-    mockGateway.deliverNotification(incomingEnvelope('m1', 'partial hello', 'Дейл'))
-    await vi.waitFor(() => {
+      mockGateway.deliverNotification(incomingEnvelope('m1', 'partial hello', 'Дейл'))
+      await vi.waitFor(
+        () => {
+          expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(1)
+        },
+        { timeout: 5_000 },
+      )
+
+      expect(useChatsStore.getState().summaries).toHaveLength(1)
+      expect(useChatsStore.getState().summaries[0]).toMatchObject({
+        unread: 1,
+        lastMessage: { id: 'm1', text: 'partial hello' },
+      })
+      expect(failFirstApply).toBe(false)
+    } finally {
+      useMessagesStore.setState({ applyMessageEvent: originalApply })
+      unbind()
+    }
+  })
+
+  it('collapses a differing-channel redelivery into one unread without replacing the preview', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+
+    try {
+      mockGateway.deliverNotification(incomingEnvelope('journal-1', 'same text', 'Дейл'))
+      await vi.waitFor(() => {
+        expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(1)
+      })
+
+      mockGateway.deliverNotification(incomingEnvelope('webhook-1', 'same text', 'Дейл'))
+      await vi.waitFor(() => {
+        expect(mockGateway.receipts).toHaveLength(0)
+      })
+
       expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(1)
+      expect(useChatsStore.getState().summaries[0]).toMatchObject({
+        unread: 1,
+        lastMessage: { id: 'journal-1', text: 'same text' },
+      })
+    } finally {
+      unbind()
+    }
+  })
+
+  it('ignores a replay of an earlier message after a newer same-second preview', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+
+    try {
+      mockGateway.deliverNotification(incomingEnvelope('m-first', 'first', 'Дейл'))
+      await vi.waitFor(() => {
+        expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(1)
+      })
+      mockGateway.deliverNotification(incomingEnvelope('m-second', 'second', 'Дейл'))
+      await vi.waitFor(() => {
+        expect(mockGateway.receipts).toHaveLength(0)
+      })
+
+      mockGateway.deliverNotification(incomingEnvelope('m-first', 'first', 'Дейл'))
+      await vi.waitFor(() => {
+        expect(mockGateway.receipts).toHaveLength(0)
+      })
+
+      expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(2)
+      expect(useChatsStore.getState().summaries[0]).toMatchObject({
+        unread: 2,
+        lastMessage: { id: 'm-second', text: 'second' },
+      })
+    } finally {
+      unbind()
+    }
+  })
+
+  it('repairs the message write without double-counting after an interleaved summary write', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+    const originalApply = useMessagesStore.getState().applyMessageEvent
+    let failFirstApply = true
+    useMessagesStore.setState({
+      applyMessageEvent: (event) => {
+        if (failFirstApply) {
+          failFirstApply = false
+          throw new Error('transient write failure')
+        }
+        return originalApply(event)
+      },
     })
 
-    expect(useChatsStore.getState().summaries).toHaveLength(1)
-    expect(useChatsStore.getState().summaries[0]).toMatchObject({
-      unread: 1,
-      lastMessage: { id: 'm1', text: 'partial hello' },
-    })
-    expect(failFirstApply).toBe(false)
+    try {
+      mockGateway.deliverNotification(incomingEnvelope('m1', 'partial hello', 'Дейл'))
+      await vi.waitFor(() => {
+        expect(useChatsStore.getState().summaries[0]).toMatchObject({
+          unread: 1,
+          lastMessage: { id: 'm1' },
+        })
+      })
 
-    useMessagesStore.setState({ applyMessageEvent: originalApply })
-    unbind()
+      useChatsStore.getState().applyNewMessage({
+        message: {
+          id: 'send-1',
+          chatId: 'chat-1',
+          direction: 'outgoing',
+          text: 'same second',
+          timestamp: 1_736_000_000_000,
+          status: 'sent',
+        },
+        fallbackName: null,
+      })
+
+      mockGateway.deliverNotification(incomingEnvelope('m1', 'partial hello', 'Дейл'))
+      await vi.waitFor(
+        () => {
+          expect(mockGateway.receipts).toHaveLength(0)
+        },
+        { timeout: 5_000 },
+      )
+
+      expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(1)
+      expect(useChatsStore.getState().summaries[0]).toMatchObject({
+        unread: 1,
+        lastMessage: { id: 'send-1' },
+      })
+    } finally {
+      useMessagesStore.setState({ applyMessageEvent: originalApply })
+      unbind()
+    }
   })
 
   it('reloads the open empty chat when the bootstrap settling completes', async () => {

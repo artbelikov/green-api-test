@@ -708,6 +708,51 @@ describe('createMessagesStore — cross-source dedupe', () => {
 
     expect(store.getState().byChat['chat-1']).toHaveLength(1)
   })
+
+  it('reports cross-channel duplicates without mutating state', () => {
+    const store = createStore()
+    const journal = createLiveMessageEvent({ id: 'journal-1', text: 'same text', timestamp: 5_000 })
+    store.getState().applyMessageEvent(journal)
+
+    const webhookCopy = createLiveMessageEvent({
+      id: 'webhook-1',
+      text: 'same text',
+      timestamp: 5_000,
+    })
+    expect(store.getState().isDuplicateMessage(webhookCopy.message)).toBe(true)
+    expect(store.getState().isDuplicateMessage(journal.message)).toBe(true)
+    expect(
+      store.getState().isDuplicateMessage(createLiveMessageEvent({ id: 'fresh-1' }).message),
+    ).toBe(false)
+    expect(store.getState().byChat['chat-1']).toHaveLength(1)
+  })
+
+  it('recognizes a replayed earlier message after a newer same-second one landed', () => {
+    const store = createStore()
+    const first = createLiveMessageEvent({ id: 'm-first', text: 'first', timestamp: 9_000 })
+    const second = createLiveMessageEvent({ id: 'm-second', text: 'second', timestamp: 9_000 })
+    store.getState().applyMessageEvent(first)
+    store.getState().applyMessageEvent(second)
+
+    expect(store.getState().isDuplicateMessage(first.message)).toBe(true)
+    expect(store.getState().byChat['chat-1']?.map((message) => message.id)).toEqual([
+      'm-first',
+      'm-second',
+    ])
+  })
+
+  it('does not report a pending-bubble reconcile as a duplicate', () => {
+    const store = createStore()
+    store.getState().appendPending('chat-1', 'Hello there')
+
+    const webhook = createLiveMessageEvent({
+      id: 'server-1',
+      direction: 'outgoing',
+      text: 'Hello there',
+      status: 'sent',
+    })
+    expect(store.getState().isDuplicateMessage(webhook.message)).toBe(false)
+  })
 })
 
 describe('createMessagesStore — capacity and persistence', () => {

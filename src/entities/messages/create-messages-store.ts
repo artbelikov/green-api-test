@@ -9,7 +9,7 @@ import type {
   MessageNotificationEvent,
   StatusNotificationEvent,
 } from '@/shared/api/greenapi'
-import { escalatesDeliveryStatus, mapHistoryMessage } from '@/shared/api/greenapi'
+import { escalatesDeliveryStatus, mapHistoryMessage, matchesMessage } from '@/shared/api/greenapi'
 import {
   createPersistThrottle,
   type KeyValueStore,
@@ -46,6 +46,7 @@ export type MessagesState = {
   markSendFailed(chatId: string, pendingId: string, error: ApiError): void
   dropMessage(chatId: string, messageId: string): void
   applyMessageEvent(event: MessageNotificationEvent): boolean
+  isDuplicateMessage(message: Message): boolean
   applyStatusEvent(event: StatusNotificationEvent): boolean
   loadChatHistory(chatId: string, credentials: GreenApiCredentials): Promise<HistoryPhase>
   resetEmptyHistoryPhases(): void
@@ -55,18 +56,15 @@ export type MessagesState = {
 const compareMessages = (a: Message, b: Message): number =>
   a.timestamp - b.timestamp || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 
-const NEAR_MATCH_WINDOW_MS = 2000
-
-const matchesMessage = (candidate: Message, incoming: Message): boolean => {
-  if (candidate.id === incoming.id) {
-    return true
-  }
-  return (
-    candidate.direction === incoming.direction &&
-    candidate.text === incoming.text &&
-    Math.abs(candidate.timestamp - incoming.timestamp) <= NEAR_MATCH_WINDOW_MS
-  )
-}
+const findPendingBubbleIndex = (messages: readonly Message[], message: Message): number =>
+  message.direction === 'outgoing'
+    ? messages.findIndex(
+        (candidate) =>
+          candidate.status === 'pending' &&
+          candidate.direction === 'outgoing' &&
+          candidate.text === message.text,
+      )
+    : -1
 
 const escalatesFrom = (current: Message, next: Message): boolean =>
   next.status !== null && escalatesDeliveryStatus(current.status, next.status)
@@ -250,15 +248,7 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
         const { message } = event
         const { byChat } = get()
         const messages = byChat[message.chatId] ?? []
-        const pendingIndex =
-          message.direction === 'outgoing'
-            ? messages.findIndex(
-                (candidate) =>
-                  candidate.status === 'pending' &&
-                  candidate.direction === 'outgoing' &&
-                  candidate.text === message.text,
-              )
-            : -1
+        const pendingIndex = findPendingBubbleIndex(messages, message)
         if (pendingIndex >= 0) {
           const next = [...messages]
           next[pendingIndex] = message
@@ -274,6 +264,15 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
         }
         commitChat(message.chatId, merged)
         return true
+      },
+
+      isDuplicateMessage(message) {
+        const { byChat } = get()
+        const messages = byChat[message.chatId] ?? []
+        return (
+          findPendingBubbleIndex(messages, message) === -1 &&
+          messages.some((candidate) => matchesMessage(candidate, message))
+        )
       },
 
       applyStatusEvent(event) {

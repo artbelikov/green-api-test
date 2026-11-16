@@ -32,6 +32,19 @@ export type MessageNotificationEvent = Extract<NotificationEvent, { readonly kin
 
 export type StatusNotificationEvent = Extract<NotificationEvent, { readonly kind: 'status' }>
 
+const NEAR_MATCH_WINDOW_MS = 2000
+
+export const matchesMessage = (candidate: Message, incoming: Message): boolean => {
+  if (candidate.id === incoming.id) {
+    return true
+  }
+  return (
+    candidate.direction === incoming.direction &&
+    candidate.text === incoming.text &&
+    Math.abs(candidate.timestamp - incoming.timestamp) <= NEAR_MATCH_WINDOW_MS
+  )
+}
+
 const DELIVERY_STATUS_RANK: Readonly<Record<MessageDeliveryStatus, number>> = {
   failed: 0,
   pending: 0,
