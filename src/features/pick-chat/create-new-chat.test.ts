@@ -37,6 +37,9 @@ const connectSession = (): void => {
   useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
 }
 
+const contactInfoEndpoint = (): string =>
+  `${CREDENTIALS.apiUrl}/waInstance${CREDENTIALS.idInstance}/getContactInfo/${CREDENTIALS.apiTokenInstance}`
+
 describe('createNewChat', () => {
   it('resolves the demo contact phone, creates the chat, and opens it', async () => {
     connectSession()
@@ -198,5 +201,54 @@ describe('createNewChat', () => {
 
     expect(result).toEqual({ ok: false, code: 'unsupportedRegion' })
     expect(useChatsStore.getState().summaries).toHaveLength(0)
+  })
+
+  it('abandons a deferred contact resolution when the session account changed', async () => {
+    connectSession()
+    let release: () => void = () => undefined
+    const done = new Promise<void>((resolve) => {
+      release = () => resolve()
+    })
+    server.use(
+      http.post(contactInfoEndpoint(), async () => {
+        await done
+        return HttpResponse.json({ chatId: '79991234567', name: 'Demo Contact' })
+      }),
+    )
+
+    const result = createNewChat({ phone: '79991234567', chatId: '' })
+    const otherCredentials: GreenApiCredentials = { ...CREDENTIALS, apiTokenInstance: 'token-2' }
+    useSessionStore.setState({ credentials: otherCredentials, status: 'connected' })
+    release()
+
+    expect(await result).toEqual({ ok: false, code: 'notConnected' })
+    expect(useChatsStore.getState().summaries).toHaveLength(0)
+    expect(useChatsStore.getState().activeChatId).toBeNull()
+  })
+
+  it('does not open the fallback recipient chat when the session changed during the lookup', async () => {
+    connectSession()
+    let release: () => void = () => undefined
+    const done = new Promise<void>((resolve) => {
+      release = () => resolve()
+    })
+    server.use(
+      http.post(contactInfoEndpoint(), async () => {
+        await done
+        return HttpResponse.json(
+          { error: 'Validation failed', details: 'Invalid chatId or not found' },
+          { status: 400 },
+        )
+      }),
+    )
+
+    const result = createNewChat({ phone: '79161112233', chatId: '' })
+    const otherCredentials: GreenApiCredentials = { ...CREDENTIALS, apiTokenInstance: 'token-2' }
+    useSessionStore.setState({ credentials: otherCredentials, status: 'connected' })
+    release()
+
+    expect(await result).toEqual({ ok: false, code: 'notConnected' })
+    expect(useChatsStore.getState().summaries).toHaveLength(0)
+    expect(useChatsStore.getState().activeChatId).toBeNull()
   })
 })

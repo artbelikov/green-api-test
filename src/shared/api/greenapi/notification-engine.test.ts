@@ -258,6 +258,56 @@ describe('notification engine poll cycle', () => {
     expect(activity).toEqual(['apply:m1', 'ack:7', 'apply:m2', 'ack:8'])
   })
 
+  it('keeps the receipt for redelivery when any subscriber fails to apply the event', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const activity: string[] = []
+    const gateway = new FakeNotificationGateway(
+      [
+        { kind: 'deliver', receiptId: 5, body: incomingEnvelope('m1', 'one') },
+        { kind: 'deliver', receiptId: 5, body: incomingEnvelope('m1', 'one') },
+        { kind: 'block' },
+      ],
+      activity,
+    )
+    const scheduler = new ManualScheduler()
+    const engine = createNotificationEngine({ gateway, scheduler })
+    let firstApplicationFailed = false
+    const unsubscribe = engine.subscribe((event) => {
+      if (event.kind !== 'message') {
+        return
+      }
+      if (!firstApplicationFailed) {
+        firstApplicationFailed = true
+        throw new Error('transient application failure')
+      }
+      activity.push(`apply:${event.message.id}`)
+    })
+    const requiredListener = vi.fn((event: NotificationEngineEvent) => {
+      if (event.kind === 'message') {
+        activity.push(`required:${event.message.id}`)
+      }
+    })
+    engine.subscribe(requiredListener)
+
+    engine.start(CREDENTIALS)
+    await vi.waitFor(() => {
+      expect(scheduler.tasks.length).toBeGreaterThan(0)
+    })
+    expect(gateway.acknowledgeCalls).toEqual([])
+    scheduler.flushNext()
+
+    await vi.waitFor(() => {
+      expect(gateway.acknowledgeCalls).toEqual([5])
+      expect(gateway.receiveCalls).toBe(3)
+    })
+    await engine.stop()
+    unsubscribe()
+    warnSpy.mockRestore()
+
+    expect(activity).toEqual(['required:m1', 'apply:m1', 'required:m1', 'ack:5'])
+    expect(firstApplicationFailed).toBe(true)
+  })
+
   it('acks and skips envelopes the mapper ignores', async () => {
     const activity: string[] = []
     const gateway = new FakeNotificationGateway(

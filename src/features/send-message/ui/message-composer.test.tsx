@@ -172,14 +172,33 @@ describe('MessageComposer', () => {
     }
   })
 
-  it('does not send text longer than the limit', () => {
+  it('caps input at the validated code-point limit instead of blocking it silently', () => {
     connectSession()
     renderComposer()
     fireEvent.change(textarea(), { target: { value: 'a'.repeat(4001) } })
 
+    expect(textarea().value).toBe('a'.repeat(4000))
+  })
+
+  it('truncates pasted input at 4000 code points without splitting surrogate pairs', async () => {
+    connectSession()
+    renderComposer()
+    const emoji = '😀'
+
+    fireEvent.change(textarea(), { target: { value: emoji.repeat(4100) } })
+
+    expect(textarea()).not.toHaveAttribute('maxLength')
+    expect(textarea().value).toHaveLength(2 * 4000)
+    expect([...textarea().value]).toHaveLength(4000)
+
     fireEvent.keyDown(textarea(), { key: 'Enter' })
 
-    expect(useMessagesStore.getState().byChat['chat-1']).toBeUndefined()
+    await waitFor(() => {
+      const messages = useMessagesStore.getState().byChat['chat-1'] ?? []
+      expect([...(messages[0]?.text ?? '')]).toHaveLength(4000)
+      expect(messages[0]).toMatchObject({ status: 'sent' })
+    })
+    expect(textarea()).toHaveValue('')
   })
 
   it('keeps the send affordance wired without dead disabled states', () => {

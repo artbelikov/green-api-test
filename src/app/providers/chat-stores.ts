@@ -74,6 +74,9 @@ export function bindChatStores(): () => void {
       useChatsStore.getState().clear()
       useMessagesStore.getState().clear()
     }
+    if (state.bootstrapPhase === 'done' && previous.bootstrapPhase === 'settling') {
+      useMessagesStore.getState().resetEmptyHistoryPhases()
+    }
   })
   return () => {
     engineUnsubscribe()

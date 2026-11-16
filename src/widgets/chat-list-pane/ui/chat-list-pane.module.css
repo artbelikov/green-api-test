@@ -13,6 +13,23 @@
   padding: 16px 16px 8px;
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settingsAction {
+  color: var(--mantine-color-gray-6);
+}
+
+.settingsIcon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  margin: auto;
+}
+
 .fab {
   flex-shrink: 0;
 }

@@ -51,6 +51,7 @@ export const NOTIFICATION_ENGINE_RECEIVE_TIMEOUT_SECONDS = 10
 export const NOTIFICATION_ENGINE_INITIAL_BACKOFF_MS = 1_000
 export const NOTIFICATION_ENGINE_MAX_BACKOFF_MS = 30_000
 export const NOTIFICATION_ENGINE_HIDDEN_DISPATCH_INTERVAL_MS = 1_000
+const NOTIFICATION_ENGINE_APPLICATION_RETRY_MS = 1_000
 
 export type NotificationEngine = {
   start(credentials: GreenApiCredentials): void
@@ -133,11 +134,25 @@ export function createNotificationEngine(deps: NotificationEngineDeps): Notifica
 
   const isAborted = (): boolean => controller?.signal.aborted ?? true
 
-  const emit = async (event: NotificationEngineEvent): Promise<void> => {
+  const emit = async (event: NotificationEngineEvent): Promise<boolean> => {
     const snapshot = [...listeners]
-    await Promise.allSettled(
+    if (snapshot.length === 0) {
+      return true
+    }
+    const outcomes = await Promise.allSettled(
       snapshot.map((listener) => Promise.resolve().then(() => listener(event))),
     )
+    let delivered = true
+    for (const outcome of outcomes) {
+      if (outcome.status === 'rejected') {
+        delivered = false
+        console.warn(
+          '[notifications] subscriber failed to apply the event — the receipt stays for redelivery',
+          outcome.reason,
+        )
+      }
+    }
+    return delivered
   }
 
   const ack = async (receiptId: number): Promise<void> => {
@@ -167,7 +182,11 @@ export function createNotificationEngine(deps: NotificationEngineDeps): Notifica
         }
         try {
           if (next.event !== null) {
-            await emit(next.event)
+            const delivered = await emit(next.event)
+            if (!delivered) {
+              await waitBackoff(NOTIFICATION_ENGINE_APPLICATION_RETRY_MS, controller?.signal)
+              continue
+            }
           }
           await ack(next.receiptId)
         } finally {
@@ -226,8 +245,8 @@ export function createNotificationEngine(deps: NotificationEngineDeps): Notifica
     }
   }
 
-  const waitBackoff = (delayMs: number, signal: AbortSignal): Promise<void> => {
-    if (signal.aborted) {
+  const waitBackoff = (delayMs: number, signal: AbortSignal | undefined): Promise<void> => {
+    if (signal === undefined || signal.aborted) {
       return Promise.resolve()
     }
     return new Promise((resolve) => {
@@ -259,7 +278,11 @@ export function createNotificationEngine(deps: NotificationEngineDeps): Notifica
     }
     if (currentVisibility() === 'visible') {
       if (event !== null) {
-        await emit(event)
+        const delivered = await emit(event)
+        if (!delivered) {
+          await waitBackoff(NOTIFICATION_ENGINE_APPLICATION_RETRY_MS, controller?.signal)
+          return
+        }
       }
       await ack(received.receiptId)
       return

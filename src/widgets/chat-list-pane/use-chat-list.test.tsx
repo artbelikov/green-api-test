@@ -1,4 +1,5 @@
 import { MantineProvider } from '@mantine/core'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render } from '@testing-library/react'
 import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
@@ -7,7 +8,7 @@ import { useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
 import type { Chat, GreenApiCredentials } from '@/shared/api/greenapi'
 import { handlers } from '@/shared/mocks'
-import { useChatPreviewHydration } from './use-chat-list'
+import { useChatListHydration, useChatPreviewHydration } from './use-chat-list'
 
 const BASE_CREDENTIALS: GreenApiCredentials = {
   apiUrl: 'https://gateway.test',
@@ -143,6 +144,93 @@ const seedSession = (credentials: GreenApiCredentials): void => {
 const waitForTest = async (assert: () => void): Promise<void> => {
   await vi.waitFor(assert, { timeout: 3_000 })
 }
+
+const HydrationHarness = (): null => {
+  useChatListHydration()
+  return null
+}
+
+const mountHydrationHarness = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MantineProvider>
+        <HydrationHarness />
+      </MantineProvider>
+    </QueryClientProvider>,
+  )
+}
+
+describe('useChatListHydration', () => {
+  it('fetches a fresh list for the newly connected account', async () => {
+    let requests = 0
+    server.use(
+      http.get(/\/getChats\//, () => {
+        requests += 1
+        return HttpResponse.json(CHATS)
+      }),
+    )
+
+    const firstCredentials = freshCredentials()
+    seedSession(firstCredentials)
+    const firstHandle = mountHydrationHarness()
+    await waitForTest(() => {
+      expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
+    })
+    firstHandle.unmount()
+
+    act(() => {
+      useSessionStore.setState({ credentials: null, status: 'disconnected' })
+      useChatsStore.getState().clear()
+    })
+
+    const otherCredentials: GreenApiCredentials = {
+      ...firstCredentials,
+      apiTokenInstance: 'token-2',
+    }
+    seedSession(otherCredentials)
+    const secondHandle = mountHydrationHarness()
+    await waitForTest(() => {
+      expect(requests).toBe(2)
+      expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
+    })
+    secondHandle.unmount()
+  })
+
+  it('replays the cached list for a same-account reconnect without refetching', async () => {
+    let requests = 0
+    server.use(
+      http.get(/\/getChats\//, () => {
+        requests += 1
+        return HttpResponse.json(CHATS)
+      }),
+    )
+
+    const credentials = freshCredentials()
+    seedSession(credentials)
+    const firstHandle = mountHydrationHarness()
+    await waitForTest(() => {
+      expect(requests).toBe(1)
+      expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
+    })
+    firstHandle.unmount()
+
+    act(() => {
+      useSessionStore.setState({ credentials: null, status: 'disconnected' })
+      useChatsStore.getState().clear()
+    })
+
+    seedSession(freshCredentials())
+    const secondHandle = mountHydrationHarness()
+    await waitForTest(() => {
+      expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
+    })
+    expect(requests).toBe(1)
+    secondHandle.unmount()
+  })
+})
 
 describe('useChatPreviewHydration', () => {
   it('fetches count-1 history for each visible chat and mirrors it as an unread-free preview', async () => {

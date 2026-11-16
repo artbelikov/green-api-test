@@ -150,6 +150,32 @@ describe('MessengerPage', () => {
     expect(useSessionStore.getState().credentials).toBeNull()
   })
 
+  it('renders no header settings action on desktop where the rail carries it', () => {
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+
+    renderPage()
+    const desktopButtons = screen.getAllByRole('button', { name: i18n.messenger.navRail.settings })
+    expect(desktopButtons).toHaveLength(1)
+  })
+
+  it('opens the settings modal from the list header and disconnects on mobile', async () => {
+    stubMatchMedia(true)
+    const user = userEvent.setup()
+    useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+
+    renderPage()
+
+    expect(
+      screen.queryByRole('navigation', { name: i18n.messenger.navRail.label }),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: i18n.messenger.navRail.settings }))
+    await screen.findByRole('dialog', { name: i18n.sessionSettings.title })
+
+    await user.click(screen.getByRole('button', { name: i18n.sessionSettings.disconnectAction }))
+    expect(useSessionStore.getState().status).toBe('disconnected')
+    expect(useSessionStore.getState().credentials).toBeNull()
+  })
+
   it('restores the chats section highlight when a modal closes', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })

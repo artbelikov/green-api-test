@@ -3,7 +3,7 @@ import { IconSend } from '@tabler/icons-react'
 import type { KeyboardEvent } from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { i18n } from '@/shared/config'
-import { MAX_SEND_TEXT_LENGTH, validateSendText } from '../lib/validate-send-text'
+import { truncateSendText, validateSendText } from '../lib/validate-send-text'
 import { sendChatText } from '../send-chat-text'
 import classes from './message-composer.module.css'
 
@@ -61,10 +61,9 @@ export function MessageComposer({ chatId }: MessageComposerProps) {
         className={classes.input}
         value={value}
         rows={1}
-        maxLength={MAX_SEND_TEXT_LENGTH}
         placeholder={i18n.messenger.composer.placeholder}
         aria-label={i18n.messenger.composer.inputLabel}
-        onChange={(event) => setValue(event.currentTarget.value)}
+        onChange={(event) => setValue(truncateSendText(event.currentTarget.value))}
         onKeyDown={handleKeyDown}
       />
       {hasText ? (

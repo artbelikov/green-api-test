@@ -30,4 +30,16 @@ test.describe('mobile viewport', () => {
     await expect(page.getByRole('heading', { name: i18n.messenger.list.heading })).toBeVisible()
     await expect(chatRow(page, 'Demo Contact')).toBeVisible()
   })
+
+  test('settings and disconnect stay reachable from the list header', async ({ page }) => {
+    await connectMockInstance(page)
+
+    await page.getByRole('button', { name: i18n.messenger.navRail.settings }).click()
+    const dialog = page.getByRole('dialog', { name: i18n.sessionSettings.title })
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toContainText(i18n.messenger.list.status.connected)
+
+    await dialog.getByRole('button', { name: i18n.sessionSettings.disconnectAction }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(i18n.connect.heading)
+  })
 })

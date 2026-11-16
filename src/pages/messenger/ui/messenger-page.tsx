@@ -38,6 +38,10 @@ export function MessengerPage({ credentials }: MessengerPageProps) {
     }
   }
 
+  const handleSettingsOpen = (): void => {
+    setSettingsOpen(true)
+  }
+
   const handleSettingsClose = (): void => {
     setSettingsOpen(false)
     setActiveSection('all')
@@ -60,7 +64,11 @@ export function MessengerPage({ credentials }: MessengerPageProps) {
         {!isMobile ? <NavRail active={activeSection} onSelect={handleSectionSelect} /> : null}
         {showList ? (
           <div className={classes.listPane}>
-            <ChatListPane credentials={credentials} />
+            <ChatListPane
+              credentials={credentials}
+              showSettingsAction={isMobile}
+              onOpenSettings={handleSettingsOpen}
+            />
           </div>
         ) : null}
         {showConversation ? (

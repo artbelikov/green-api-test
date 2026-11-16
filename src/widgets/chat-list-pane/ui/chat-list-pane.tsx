@@ -8,7 +8,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core'
-import { IconPlus } from '@tabler/icons-react'
+import { IconPlus, IconSettings } from '@tabler/icons-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useMemo, useRef, useState } from 'react'
 import { ChatAvatarWithUrl, ChatRow } from '@/entities/chat'
@@ -33,9 +33,15 @@ const CONTENT_STATE_STYLE = {
 
 export type ChatListPaneProps = {
   readonly credentials: GreenApiCredentials
+  readonly showSettingsAction?: boolean
+  readonly onOpenSettings?: () => void
 }
 
-export function ChatListPane({ credentials }: ChatListPaneProps) {
+export function ChatListPane({
+  credentials,
+  showSettingsAction = false,
+  onOpenSettings,
+}: ChatListPaneProps) {
   const summaries = useChatsStore((state) => state.summaries)
   const activeChatId = useChatsStore((state) => state.activeChatId)
   const [search, setSearch] = useState('')
@@ -80,16 +86,30 @@ export function ChatListPane({ credentials }: ChatListPaneProps) {
     <aside className={classes.pane}>
       <div className={classes.header}>
         <Title order={2}>{i18n.messenger.list.heading}</Title>
-        <ActionIcon
-          className={classes.fab}
-          size={44}
-          radius="xl"
-          color="brand"
-          aria-label={i18n.messenger.list.newChatAction}
-          onClick={() => setModalOpen(true)}
-        >
-          <IconPlus className={classes.fabIcon} aria-hidden />
-        </ActionIcon>
+        <div className={classes.headerActions}>
+          {showSettingsAction ? (
+            <ActionIcon
+              className={classes.settingsAction}
+              variant="subtle"
+              color="brand"
+              radius="xl"
+              aria-label={i18n.messenger.navRail.settings}
+              onClick={() => onOpenSettings?.()}
+            >
+              <IconSettings className={classes.settingsIcon} aria-hidden />
+            </ActionIcon>
+          ) : null}
+          <ActionIcon
+            className={classes.fab}
+            size={44}
+            radius="xl"
+            color="brand"
+            aria-label={i18n.messenger.list.newChatAction}
+            onClick={() => setModalOpen(true)}
+          >
+            <IconPlus className={classes.fabIcon} aria-hidden />
+          </ActionIcon>
+        </div>
       </div>
       <TextInput
         className={classes.search}

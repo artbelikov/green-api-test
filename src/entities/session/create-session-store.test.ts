@@ -394,6 +394,183 @@ describe('createSessionStore.resume', () => {
   })
 })
 
+describe('createSessionStore.session lifetime races', () => {
+  const ALL_ON_SETTINGS = {
+    wid: '79000000000@c.us',
+    webhookUrl: '',
+    incomingWebhook: 'no',
+    outgoingMessageWebhook: 'no',
+    outgoingWebhook: 'no',
+    stateWebhook: 'no',
+  } as const
+
+  const OTHER_VALID_INPUT = {
+    idInstance: '110100201',
+    apiTokenInstance: 'token-2',
+    apiUrl: 'https://gateway.test',
+  }
+
+  const makeGate = (): { release: () => void; done: Promise<void> } => {
+    let release: () => void = () => undefined
+    const done = new Promise<void>((resolve) => {
+      release = () => resolve()
+    })
+    return { release, done }
+  }
+
+  it('discards a deferred bootstrap completion when the session disconnects before it', async () => {
+    const { gateway, applied } = createGateway()
+    const storage = createMemoryStorage()
+    const gate = makeGate()
+    vi.mocked(gateway.settings.getSettings).mockImplementation(async () => {
+      await gate.done
+      return { ...ALL_ON_SETTINGS }
+    })
+    const store = createStore({ gateway, storage })
+
+    const connecting = store.connect(VALID_INPUT)
+    await vi.waitFor(() => {
+      expect(store.getState().status).toBe('connected')
+    })
+
+    store.disconnect()
+    gate.release()
+    await connecting
+
+    expect(store.getState()).toMatchObject({
+      status: 'disconnected',
+      credentials: null,
+      bootstrapPhase: 'idle',
+      settledAt: null,
+    })
+    expect(applied).toHaveLength(1)
+    expect(storage.entries().size).toBe(0)
+  })
+
+  it('does not let a stale bootstrap completion overwrite another account session', async () => {
+    const { gateway, applied } = createGateway()
+    const storage = createMemoryStorage()
+    const gate = makeGate()
+    vi.mocked(gateway.settings.getSettings).mockImplementation(async (credentials) => {
+      if (credentials.idInstance === VALID_INPUT.idInstance.trim()) {
+        await gate.done
+      }
+      return { ...ALL_ON_SETTINGS }
+    })
+    const store = createStore({ gateway, storage })
+
+    const staleConnect = store.connect(VALID_INPUT)
+    await vi.waitFor(() => {
+      expect(store.getState().status).toBe('connected')
+    })
+
+    store.disconnect()
+    const freshResult = await store.connect(OTHER_VALID_INPUT)
+
+    expect(freshResult).toEqual({ ok: true })
+    const persistedBefore = JSON.parse(storage.entries().get(SETTINGS_STORAGE_KEY) ?? '') as {
+      credentials: GreenApiCredentials
+    }
+    expect(persistedBefore.credentials.idInstance).toBe(OTHER_VALID_INPUT.idInstance)
+
+    gate.release()
+    await staleConnect
+
+    const persistedAfter = JSON.parse(storage.entries().get(SETTINGS_STORAGE_KEY) ?? '') as {
+      credentials: GreenApiCredentials
+      settledAt: number
+    }
+    expect(persistedAfter.credentials.idInstance).toBe(OTHER_VALID_INPUT.idInstance)
+    expect(store.getState().credentials?.idInstance).toBe(OTHER_VALID_INPUT.idInstance)
+    expect(applied).toHaveLength(2)
+  })
+
+  it('does not mark bootstrap failed when the session already disconnected', async () => {
+    const { gateway, applied } = createGateway()
+    const storage = createMemoryStorage()
+    const gate = makeGate()
+    vi.mocked(gateway.settings.getSettings).mockImplementation(async () => {
+      await gate.done
+      throw new Error('boom')
+    })
+    const store = createStore({ gateway, storage })
+
+    const connecting = store.connect(VALID_INPUT)
+    await vi.waitFor(() => {
+      expect(store.getState().status).toBe('connected')
+    })
+
+    store.disconnect()
+    gate.release()
+    await connecting
+
+    expect(store.getState().bootstrapPhase).toBe('idle')
+    expect(applied).toEqual([])
+    expect(storage.entries().size).toBe(0)
+  })
+
+  it('discards a stale resume completion after disconnect', async () => {
+    const { gateway } = createGateway()
+    const storage = createMemoryStorage()
+    storage.write(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({ credentials: TRIMMED_CREDENTIALS, settledAt: 1_000 }),
+    )
+    const gate = makeGate()
+    vi.mocked(gateway.state.getStateInstance).mockImplementation(async () => {
+      await gate.done
+      return { stateInstance: 'authorized' }
+    })
+    const store = createStore({ gateway, storage })
+
+    const resuming = store.resume()
+    await vi.waitFor(() => {
+      expect(store.getState().status).toBe('connecting')
+    })
+
+    store.disconnect()
+    gate.release()
+    await resuming
+
+    expect(store.getState()).toMatchObject({
+      status: 'disconnected',
+      credentials: null,
+      bootstrapPhase: 'idle',
+      sessionResolved: true,
+    })
+  })
+
+  it('discards a stale connect validation when a newer connect takes over', async () => {
+    const { gateway } = createGateway()
+    const storage = createMemoryStorage()
+    const gate = makeGate()
+    let stateCalls = 0
+    vi.mocked(gateway.state.getStateInstance).mockImplementation(async () => {
+      stateCalls += 1
+      if (stateCalls === 1) {
+        await gate.done
+        return { stateInstance: 'authorized' }
+      }
+      return { stateInstance: 'authorized' }
+    })
+    const store = createStore({ gateway, storage })
+
+    const staleConnect = store.connect(VALID_INPUT)
+    await vi.waitFor(() => {
+      expect(store.getState().status).toBe('connecting')
+    })
+
+    const freshConnect = store.connect(OTHER_VALID_INPUT)
+    expect(await freshConnect).toEqual({ ok: true })
+    gate.release()
+
+    expect(await staleConnect).toEqual({ ok: false, code: 'unexpected' })
+    expect(store.getState().status).toBe('connected')
+    expect(storage.entries().get(SETTINGS_STORAGE_KEY)).toContain(OTHER_VALID_INPUT.idInstance)
+    expect(store.getState().credentials?.idInstance).toBe(OTHER_VALID_INPUT.idInstance)
+  })
+})
+
 describe('createSessionStore.settle phase', () => {
   it('completes the settle window on refresh', async () => {
     let currentNow = 1_000

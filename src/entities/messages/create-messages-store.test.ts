@@ -149,7 +149,7 @@ describe('createMessagesStore — live events', () => {
     }
   })
 
-  it('replaces a matching pending bubble when the outgoing webhook arrives first', () => {
+  it('replaces a matching pending bubble only when the outgoing webhook arrives first', () => {
     const store = createStore()
     const pendingId = store.getState().appendPending('chat-1', 'Hello there')
 
@@ -165,6 +165,70 @@ describe('createMessagesStore — live events', () => {
     expect(messages).toHaveLength(1)
     expect(messages[0]).toMatchObject({ id: 'server-1', status: 'sent' })
     expect(messages.some((message) => message.id === pendingId)).toBe(false)
+  })
+
+  it('keeps a pending outgoing bubble when an identical incoming event arrives first', async () => {
+    const store = createStore()
+    const pendingId = store.getState().appendPending('chat-1', 'Hello there')
+
+    expect(
+      store.getState().applyMessageEvent(
+        createLiveMessageEvent({
+          id: 'in-1',
+          direction: 'incoming',
+          text: 'Hello there',
+          timestamp: 1_010,
+        }),
+      ),
+    ).toBe(true)
+
+    const messages = store.getState().byChat['chat-1'] ?? []
+    expect(messages).toHaveLength(2)
+    expect(messages.find((message) => message.id === pendingId)).toMatchObject({
+      direction: 'outgoing',
+      status: 'pending',
+    })
+    expect(
+      store.getState().applyMessageEvent(
+        createLiveMessageEvent({
+          id: 'in-1',
+          direction: 'incoming',
+          text: 'Hello there',
+          timestamp: 1_010,
+        }),
+      ),
+    ).toBe(false)
+  })
+
+  it('reconciles and fails the pending bubble after an identical incoming event arrived', async () => {
+    const pending = 'Hello there'
+    const incoming = createLiveMessageEvent({
+      id: 'in-1',
+      direction: 'incoming',
+      text: pending,
+      timestamp: 1_010,
+    })
+
+    const store = createStore()
+    const pendingId = store.getState().appendPending('chat-1', pending)
+    store.getState().applyMessageEvent(incoming)
+    expect(store.getState().reconcileSent('chat-1', pendingId, 'server-1')).toBe(true)
+    expect(store.getState().byChat['chat-1']).toHaveLength(2)
+
+    const error = ApiError.fromStatus(500, 'boom')
+    const failingStore = createStore()
+    const failingPendingId = failingStore.getState().appendPending('chat-1', pending)
+    failingStore.getState().applyMessageEvent(incoming)
+    failingStore.getState().markSendFailed('chat-1', failingPendingId, error)
+    const failingMessages = failingStore.getState().byChat['chat-1'] ?? []
+    expect(failingMessages.find((message) => message.id === failingPendingId)).toMatchObject({
+      status: 'failed',
+    })
+    expect(failingStore.getState().failedSend).toEqual({
+      chatId: 'chat-1',
+      pendingId: failingPendingId,
+      error,
+    })
   })
 
   it('reconciles the pending bubble by the idMessage returned from sendMessage', () => {
@@ -673,6 +737,7 @@ describe('createMessagesStore — capacity and persistence', () => {
       chatId: 'chat-1',
       textMessage: 'from history',
     } satisfies GreenApiHistoryItem
+    let revivedCalls = 0
     const store = createMessagesStore({
       gateway: { getChatHistory: async () => [historyEntry] },
       now: () => (clock += 1),
@@ -689,7 +754,12 @@ describe('createMessagesStore — capacity and persistence', () => {
       vi.advanceTimersByTime(500)
 
       const revived = createMessagesStore({
-        gateway: { getChatHistory: async () => [] },
+        gateway: {
+          getChatHistory: async () => {
+            revivedCalls += 1
+            return [historyEntry]
+          },
+        },
         now: () => 0,
         storage,
         capacityPerChat: 200,
@@ -698,7 +768,16 @@ describe('createMessagesStore — capacity and persistence', () => {
       const messages = revived.getState().byChat['chat-1'] ?? []
       expect(messages.map((message) => message.id)).toEqual(['h1', 'm1'])
       expect(messages.some((message) => message.id === pendingId)).toBe(false)
-      expect(revived.getState().history['chat-1']).toBe('ready')
+      expect(revived.getState().history).toEqual({})
+
+      const phase = await revived.getState().loadChatHistory('chat-1', CREDENTIALS)
+
+      expect(phase).toBe('ready')
+      expect(revivedCalls).toBe(1)
+      expect(revived.getState().byChat['chat-1']?.map((message) => message.id)).toEqual([
+        'h1',
+        'm1',
+      ])
     } finally {
       vi.useRealTimers()
     }
@@ -904,6 +983,137 @@ describe('createMessagesStore — persistence throttling', () => {
       expect(store.getState().history['chat-1']).toBe('failed')
       expect(warnSpy).toHaveBeenCalledTimes(1)
       expect(warnSpy.mock.calls[0]?.[0]).toContain('history')
+    } finally {
+      warnSpy.mockRestore()
+    }
+  })
+
+  it('keeps the fresh load in flight when a stale rejected load settles after a clear', async () => {
+    const staleGate: { release: () => void } = { release: () => undefined }
+    const freshGate: { release: () => void } = { release: () => undefined }
+    const staleEnded = new Promise<void>((resolve) => {
+      staleGate.release = () => resolve()
+    })
+    const freshEnded = new Promise<void>((resolve) => {
+      freshGate.release = () => resolve()
+    })
+    let calls = 0
+    const storage = createMemoryStorage()
+    const store = createMessagesStore({
+      gateway: {
+        getChatHistory: async () => {
+          calls += 1
+          if (calls === 1) {
+            await staleEnded
+            throw ApiError.fromStatus(500, 'stale boom')
+          }
+          await freshEnded
+          return [
+            {
+              type: 'incoming',
+              idMessage: 'h2',
+              timestamp: 200,
+              typeMessage: 'textMessage',
+              chatId: 'chat-1',
+              textMessage: 'fresh arrival',
+            } satisfies GreenApiHistoryItem,
+          ]
+        },
+      },
+      now: () => 1,
+      storage,
+      capacityPerChat: 200,
+    })
+
+    const stale = store.getState().loadChatHistory('chat-1', CREDENTIALS)
+    store.getState().clear()
+    const fresh = store.getState().loadChatHistory('chat-1', CREDENTIALS)
+    expect(fresh).not.toBe(stale)
+
+    staleGate.release()
+    expect(await stale).toBe('failed')
+    expect(store.getState().history['chat-1']).toBe('loading')
+
+    const coalesced = store.getState().loadChatHistory('chat-1', CREDENTIALS)
+    expect(coalesced).toBe(fresh)
+
+    freshGate.release()
+    expect(await fresh).toBe('ready')
+    expect(store.getState().history['chat-1']).toBe('ready')
+    expect(store.getState().byChat['chat-1']?.map((message) => message.id)).toEqual(['h2'])
+  })
+
+  it('gives empty chats a fresh hydration boundary when it can refetch', async () => {
+    const emptyChat = 'chat-empty'
+    const filledChat = 'chat-filled'
+    const store = createStore({
+      gateway: {
+        getChatHistory: async (_credentials, args) =>
+          args.chatId === filledChat
+            ? [
+                {
+                  type: 'incoming',
+                  idMessage: 'h1',
+                  timestamp: 100,
+                  typeMessage: 'textMessage',
+                  chatId: filledChat,
+                  textMessage: 'kept',
+                } satisfies GreenApiHistoryItem,
+              ]
+            : [],
+      },
+    })
+
+    await Promise.all([
+      store.getState().loadChatHistory(filledChat, CREDENTIALS),
+      store.getState().loadChatHistory(emptyChat, CREDENTIALS),
+    ])
+    expect(store.getState().history[filledChat]).toBe('ready')
+    expect(store.getState().history[emptyChat]).toBe('ready')
+
+    store.getState().resetEmptyHistoryPhases()
+
+    expect(store.getState().history[emptyChat]).toBeUndefined()
+    expect(store.getState().history[filledChat]).toBe('ready')
+  })
+
+  it('keeps in-flight loading phases across the empty-phase reset', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const store = createStore({
+      gateway: {
+        getChatHistory: async () => {
+          await gate
+          return []
+        },
+      },
+    })
+    const load = store.getState().loadChatHistory('chat-1', CREDENTIALS)
+
+    expect(store.getState().history['chat-1']).toBe('loading')
+    store.getState().resetEmptyHistoryPhases()
+    expect(store.getState().history['chat-1']).toBe('loading')
+
+    release()
+    expect(await load).toBe('ready')
+  })
+
+  it('keeps failed phases across the empty-phase reset', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    try {
+      const store = createStore({
+        gateway: {
+          getChatHistory: async () => {
+            throw ApiError.fromStatus(500, 'boom')
+          },
+        },
+      })
+
+      expect(await store.getState().loadChatHistory('chat-1', CREDENTIALS)).toBe('failed')
+      store.getState().resetEmptyHistoryPhases()
+      expect(store.getState().history['chat-1']).toBe('failed')
     } finally {
       warnSpy.mockRestore()
     }

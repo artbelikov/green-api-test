@@ -4,6 +4,7 @@ import { useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
 import {
   type Chat,
+  credentialsFingerprint,
   type GreenApiCredentials,
   type GreenApiHistoryItem,
   getChatHistory,
@@ -148,25 +149,34 @@ export type ChatListHydration = {
   readonly loading: boolean
 }
 
+const listQueryKeyFor = (credentials: GreenApiCredentials | null): [string, string | null] => [
+  'chat-list',
+  credentials === null ? null : credentialsFingerprint(credentials),
+]
+
 export const useChatListHydration = (): ChatListHydration => {
-  const connected = useSessionStore((state) => state.credentials !== null)
+  const credentials = useSessionStore((state) => state.credentials)
+  const connected = credentials !== null
   const query = useQuery({
-    queryKey: ['chat-list'],
-    queryFn: async () => {
-      const credentials = useSessionStore.getState().credentials
-      if (credentials === null) {
-        return false
+    queryKey: listQueryKeyFor(credentials),
+    queryFn: async (): Promise<readonly Chat[]> => {
+      const current = useSessionStore.getState().credentials
+      if (current === null) {
+        return []
       }
-      const items = await getChats(credentials)
-      if (useSessionStore.getState().credentials !== credentials) {
-        return false
+      const items = await getChats(current)
+      if (useSessionStore.getState().credentials !== current) {
+        return []
       }
-      const chats = items.map(mapChatListItem).filter((chat): chat is Chat => chat !== null)
-      useChatsStore.getState().upsertChats(chats)
-      return true
+      return items.map(mapChatListItem).filter((chat): chat is Chat => chat !== null)
     },
     enabled: connected,
     staleTime: LIST_STALE_TIME_MS,
   })
+  useEffect(() => {
+    if (query.data !== undefined) {
+      useChatsStore.getState().upsertChats(query.data)
+    }
+  }, [query.data])
   return { loading: connected && query.isPending }
 }

@@ -55,7 +55,11 @@ const resolveTarget = async (
   if (credentials === null) {
     return { ok: false, code: 'notConnected' }
   }
+  const sessionAbandoned = (): boolean => useSessionStore.getState().credentials !== credentials
   const openUnknownRecipientChat = (): NewChatResult => {
+    if (sessionAbandoned()) {
+      return { ok: false, code: 'notConnected' }
+    }
     const chat = mapContactInfo({}, { chatId: target, name: displayName })
     if (chat.id.length === 0) {
       return { ok: false, code: 'resolveFailed' }
@@ -66,6 +70,9 @@ const resolveTarget = async (
   }
   try {
     const profile = await getContactInfo(credentials, target)
+    if (sessionAbandoned()) {
+      return { ok: false, code: 'notConnected' }
+    }
     if (!verbatimAllowed && (profile.chatId === undefined || profile.chatId === target)) {
       return { ok: false, code: 'resolveFailed' }
     }
@@ -77,6 +84,9 @@ const resolveTarget = async (
     void openChat(chat.id)
     return { ok: true, chatId: chat.id }
   } catch (error) {
+    if (sessionAbandoned()) {
+      return { ok: false, code: 'notConnected' }
+    }
     if (error instanceof ApiError && error.kind === 'status' && error.status === 400) {
       if (verbatimAllowed) {
         return openUnknownRecipientChat()

@@ -48,6 +48,7 @@ export type MessagesState = {
   applyMessageEvent(event: MessageNotificationEvent): boolean
   applyStatusEvent(event: StatusNotificationEvent): boolean
   loadChatHistory(chatId: string, credentials: GreenApiCredentials): Promise<HistoryPhase>
+  resetEmptyHistoryPhases(): void
   clear(): void
 }
 
@@ -120,7 +121,6 @@ const isMessageValue = (value: unknown): value is Message => {
 type PersistedMessages = {
   readonly version: number
   readonly chats: unknown
-  readonly history: unknown
 }
 
 const loadPersistedChats = (storage: KeyValueStore): Record<string, readonly Message[]> => {
@@ -147,25 +147,6 @@ const loadPersistedChats = (storage: KeyValueStore): Record<string, readonly Mes
   return result
 }
 
-const loadPersistedHistory = (storage: KeyValueStore): Record<string, HistoryPhase> => {
-  const value = readJson<PersistedMessages>(storage, MESSAGES_STORAGE_KEY)
-  if (
-    typeof value !== 'object' ||
-    value === null ||
-    typeof value.history !== 'object' ||
-    value.history === null
-  ) {
-    return {}
-  }
-  const result: Record<string, HistoryPhase> = {}
-  for (const [chatId, phase] of Object.entries(value.history)) {
-    if (phase === 'ready') {
-      result[chatId] = 'ready'
-    }
-  }
-  return result
-}
-
 export function createMessagesStore(deps: MessagesStoreDeps) {
   const historyLoads = new Map<string, Promise<HistoryPhase>>()
 
@@ -173,21 +154,14 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
     let generation = 0
 
     const persistThrottle = createPersistThrottle(() => {
-      const { byChat, history } = get()
+      const { byChat } = get()
       const persistedChats: Record<string, readonly Message[]> = {}
       for (const [chatId, messages] of Object.entries(byChat)) {
         persistedChats[chatId] = messages.filter((message) => message.status !== 'pending')
       }
-      const persistedHistory: Record<string, HistoryPhase> = {}
-      for (const [chatId, phase] of Object.entries(history)) {
-        if (phase === 'ready') {
-          persistedHistory[chatId] = phase
-        }
-      }
       writeJson(deps.storage, MESSAGES_STORAGE_KEY, {
         version: 1,
         chats: persistedChats,
-        history: persistedHistory,
       })
     })
 
@@ -199,7 +173,7 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
 
     return {
       byChat: loadPersistedChats(deps.storage),
-      history: loadPersistedHistory(deps.storage),
+      history: {},
       failedSend: null,
 
       appendPending(chatId, text) {
@@ -276,12 +250,15 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
         const { message } = event
         const { byChat } = get()
         const messages = byChat[message.chatId] ?? []
-        const pendingIndex = messages.findIndex(
-          (candidate) =>
-            candidate.status === 'pending' &&
-            candidate.direction === 'outgoing' &&
-            candidate.text === message.text,
-        )
+        const pendingIndex =
+          message.direction === 'outgoing'
+            ? messages.findIndex(
+                (candidate) =>
+                  candidate.status === 'pending' &&
+                  candidate.direction === 'outgoing' &&
+                  candidate.text === message.text,
+              )
+            : -1
         if (pendingIndex >= 0) {
           const next = [...messages]
           next[pendingIndex] = message
@@ -363,14 +340,36 @@ export function createMessagesStore(deps: MessagesStoreDeps) {
             return 'ready'
           } catch (error) {
             console.warn('[history] chat history request failed', error)
+            if (generation !== startedGeneration) {
+              return 'failed'
+            }
             set({ history: { ...get().history, [chatId]: 'failed' } })
             return 'failed'
           } finally {
-            historyLoads.delete(chatId)
+            if (generation === startedGeneration) {
+              historyLoads.delete(chatId)
+            }
           }
         })()
         historyLoads.set(chatId, load)
         return load
+      },
+
+      resetEmptyHistoryPhases() {
+        const { byChat, history } = get()
+        const next: Record<string, HistoryPhase> = {}
+        let changed = false
+        for (const [chatId, phase] of Object.entries(history)) {
+          if (phase === 'ready' && (byChat[chatId]?.length ?? 0) === 0) {
+            changed = true
+            continue
+          }
+          next[chatId] = phase
+        }
+        if (!changed) {
+          return
+        }
+        set({ history: next })
       },
 
       clear() {

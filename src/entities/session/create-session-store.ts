@@ -87,6 +87,7 @@ const validateConnectInput = (input: ConnectInput): ConnectFailureCode | null =>
 export function createSessionStore(deps: SessionStoreDeps) {
   let resumeAttempted = false
   let settleTimerId: ReturnType<typeof setTimeout> | null = null
+  let lifetime = 0
 
   const clearSettleTimer = (): void => {
     if (settleTimerId !== null) {
@@ -116,18 +117,31 @@ export function createSessionStore(deps: SessionStoreDeps) {
     return isPersistedSession(value) ? value : null
   }
 
-  return create<SessionState>()((set, get) => {
-    const phaseFor = (settledAt: number | null, now: number): BootstrapPhase => {
-      if (settledAt === null) {
-        return 'idle'
-      }
-      return now - settledAt < deps.settleDurationMs ? 'settling' : 'done'
+  const phaseFor = (settledAt: number | null, now: number): BootstrapPhase => {
+    if (settledAt === null) {
+      return 'idle'
     }
+    return now - settledAt < deps.settleDurationMs ? 'settling' : 'done'
+  }
+
+  const validateState = async (
+    credentials: GreenApiCredentials,
+  ): Promise<ConnectFailureCode | null> => {
+    const state = await deps.gateway.state.getStateInstance(credentials)
+    return mapInstanceState(state.stateInstance)
+  }
+
+  return create<SessionState>()((set, get) => {
+    const ownsLifetime = (captured: number): boolean => captured === lifetime
 
     const ensureBootstrap = async (credentials: GreenApiCredentials): Promise<void> => {
+      const capturedLifetime = lifetime
       set({ bootstrapPhase: 'running' })
       try {
         const outcome = await bootstrapWebhookFlags(credentials, deps.gateway.settings, deps.now)
+        if (!ownsLifetime(capturedLifetime) || get().credentials !== credentials) {
+          return
+        }
         const phase: BootstrapPhase = outcome.appliedFlags.length === 0 ? 'done' : 'settling'
         set({ settledAt: outcome.settledAt, bootstrapPhase: phase })
         persist(credentials, outcome.settledAt)
@@ -135,16 +149,12 @@ export function createSessionStore(deps: SessionStoreDeps) {
           scheduleSettleTimer(get().refreshBootstrapPhase)
         }
       } catch (error) {
+        if (!ownsLifetime(capturedLifetime) || get().credentials !== credentials) {
+          return
+        }
         console.warn('[session] webhook settings bootstrap failed', error)
         set({ bootstrapPhase: 'failed' })
       }
-    }
-
-    const validateState = async (
-      credentials: GreenApiCredentials,
-    ): Promise<ConnectFailureCode | null> => {
-      const state = await deps.gateway.state.getStateInstance(credentials)
-      return mapInstanceState(state.stateInstance)
     }
 
     return {
@@ -165,14 +175,22 @@ export function createSessionStore(deps: SessionStoreDeps) {
           idInstance: input.idInstance.trim(),
           apiTokenInstance: input.apiTokenInstance.trim(),
         }
+        lifetime += 1
+        const capturedLifetime = lifetime
         set({ status: 'connecting' })
         try {
           const failure = await validateState(credentials)
+          if (!ownsLifetime(capturedLifetime)) {
+            return { ok: false, code: 'unexpected' }
+          }
           if (failure !== null) {
             set({ status: 'disconnected' })
             return { ok: false, code: failure }
           }
         } catch (error) {
+          if (!ownsLifetime(capturedLifetime)) {
+            return { ok: false, code: 'unexpected' }
+          }
           set({ status: 'disconnected' })
           return { ok: false, code: mapConnectError(error) }
         }
@@ -189,6 +207,7 @@ export function createSessionStore(deps: SessionStoreDeps) {
       },
 
       disconnect() {
+        lifetime += 1
         clearSettleTimer()
         resumeAttempted = false
         deps.storage.remove(SESSION_STORAGE_KEY)
@@ -212,9 +231,14 @@ export function createSessionStore(deps: SessionStoreDeps) {
           set({ sessionResolved: true })
           return
         }
+        lifetime += 1
+        const capturedLifetime = lifetime
         set({ credentials: persisted.credentials, status: 'connecting' })
         try {
           const failure = await validateState(persisted.credentials)
+          if (!ownsLifetime(capturedLifetime)) {
+            return
+          }
           if (failure !== null) {
             set({ status: 'disconnected', sessionResolved: true })
             return
@@ -232,6 +256,9 @@ export function createSessionStore(deps: SessionStoreDeps) {
             scheduleSettleTimer(get().refreshBootstrapPhase)
           }
         } catch (error) {
+          if (!ownsLifetime(capturedLifetime)) {
+            return
+          }
           console.warn('[session] session resume failed', error)
           set({ status: 'disconnected', sessionResolved: true })
         }
