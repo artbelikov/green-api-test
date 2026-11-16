@@ -1,5 +1,7 @@
 # TASKS — session-ready decomposition (5-day schedule)
 
+> **Migrated 2026-11-16 into the project-memory MCP task board** (T-ids preserved; T11 → cancelled = superseded by T15; post-submission rows → T17–T24); this file is a frozen snapshot — do not edit it.
+
 Each task = one AI coding session. Format: Goal → Scope (files) → Acceptance criteria (AC). Ordered by dependency; matches PLAN §8. Feature branches `feat/tN-slug`, squash merge on CI green.
 
 Global rules for every session (paste with each task):

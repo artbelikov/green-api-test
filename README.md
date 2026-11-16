@@ -75,9 +75,8 @@ There is no GitHub Actions pipeline by design: Railway builds and deploys `main`
 ## Documentation
 
 - `AGENTS.md` — binding conventions for AI coding sessions in this repo
-- `docs/PROGRESS.md` — living task board + handoff between sessions (the development status lives here)
-- `docs/PLAN.md` — architecture, verified API facts, UI spec, testing strategy, risks
-- `docs/TASKS.md` — build roadmap decomposed into ordered tasks
+- **project-memory MCP store** — single source of truth for cross-session state: plan, task board, decisions (D-numbers), handoff, session log (read via the MCP tools listed in `AGENTS.md`)
+- `docs/PLAN.md` · `docs/TASKS.md` · `docs/PROGRESS.md` — frozen 2026-11-16 snapshots of that state (historical reference; `docs/PLAN.md` §2 verified API facts remain the cited contract summary)
 - `docs/RESOURCES.md` — research index; `docs/resources/green-api/` — saved official API contract pages
 
 ## Deployment

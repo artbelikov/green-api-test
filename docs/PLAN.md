@@ -1,5 +1,7 @@
 ﻿# Green API Messenger — Detailed Plan
 
+> **Migrated 2026-11-16 into the project-memory MCP store** (plan sections per `AGENTS.md`); this file is a frozen snapshot — do not edit it.
+
 **Test task: “Фронтенд разработчик React”** (hh.kz vacancy 139289090, GREEN-API). The task text (`taskdesc.txt`) requires a UI for sending and receiving **text messages in MAX** via GREEN-API; **Telegram is allowed as an alternative** — we build for Telegram (instance already registered), with the architecture trivially retargetable to MAX (verified below).
 
 Stack: **Vite + React + TypeScript (SPA)**, **Mantine UI**, **Feature Sliced Design**, test pyramid (Vitest + RTL + Playwright/MSW), deploy to **Railway.com**. No Next.js, no backend.

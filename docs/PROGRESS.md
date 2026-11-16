@@ -1,5 +1,7 @@
 # PROGRESS — living tracker between AI sessions
 
+> **Migrated 2026-11-16 into the project-memory MCP store** (decisions D1–D86, session log, handoff, task board); this file is a frozen snapshot — do not edit it. D-numbers are preserved 1:1 except five slots shifted by a migration ordering slip — the store's D86 decision has the mapping. The store is the single source of truth; the rows below are historical.
+
 Single source of truth for cross-session state. **Every AI session: read this file (plus `AGENTS.md`) before starting work and update it before ending.** Condensed 2026-11-14 (user request) from a 122 KB log into one terse page; the verbose per-session history ends here by design. New sessions keep the page short: one line per decision/log event. D-numbers stay stable as stable anchors for the decisions below.
 
 Statuses: `todo` / `in-progress` / `blocked:reason` / `done`.
