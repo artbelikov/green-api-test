@@ -35,6 +35,10 @@ const rememberSummaryApplied = (message: Message): void => {
   }
 }
 
+const clearSummaryAppliedMemory = (): void => {
+  summaryAppliedMemory.length = 0
+}
+
 const showBackgroundMessageToast = (chatId: string, text: string): void => {
   notifications.show({
     title: chatNameForToast(chatId),
@@ -44,6 +48,12 @@ const showBackgroundMessageToast = (chatId: string, text: string): void => {
 }
 
 const applyEngineEvent = (event: NotificationEngineEvent): void => {
+  if (
+    (event.kind === 'message' || event.kind === 'status') &&
+    useSessionStore.getState().status !== 'connected'
+  ) {
+    throw new Error('notification arrived while the session was disconnected')
+  }
   if (event.kind === 'message') {
     const { message } = event
     const alreadyDelivered = useMessagesStore.getState().isDuplicateMessage(message)
@@ -90,11 +100,12 @@ const applyEngineEvent = (event: NotificationEngineEvent): void => {
 
 export function bindChatStores(): () => void {
   consecutivePollFailures = 0
-  summaryAppliedMemory.length = 0
+  clearSummaryAppliedMemory()
   const engine = getNotificationEngine()
   const engineUnsubscribe = engine.subscribe(applyEngineEvent)
   const sessionUnsubscribe = useSessionStore.subscribe((state, previous) => {
     if (state.status === 'disconnected' && previous.status !== 'disconnected') {
+      clearSummaryAppliedMemory()
       useChatsStore.getState().clear()
       useMessagesStore.getState().clear()
     }

@@ -264,6 +264,118 @@ describe('bindChatStores', () => {
     }
   })
 
+  it('reapplies a redelivered notification after a reconnect and only then acknowledges it', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    let failAcks = true
+    let ackAttempts = 0
+    server.use(
+      http.delete(
+        `${base}/deleteNotification/${CREDENTIALS.apiTokenInstance}/:receiptId`,
+        ({ params }) => {
+          ackAttempts += 1
+          if (failAcks) {
+            return new HttpResponse('ack outage', { status: 500 })
+          }
+          const receiptId = Number(params.receiptId)
+          const index = mockGateway.receipts.findIndex((receipt) => receipt.receiptId === receiptId)
+          if (index !== -1) {
+            mockGateway.receipts.splice(index, 1)
+          }
+          return HttpResponse.json({ result: true, reason: '' })
+        },
+      ),
+    )
+
+    try {
+      mockGateway.deliverNotification(incomingEnvelope('m1', 'persisted hello', 'Дейл'))
+      await vi.waitFor(() => {
+        expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(1)
+        expect(useChatsStore.getState().summaries[0]).toMatchObject({
+          unread: 1,
+          lastMessage: { id: 'm1' },
+        })
+      })
+      await vi.waitFor(() => {
+        expect(ackAttempts).toBeGreaterThan(0)
+      })
+      expect(mockGateway.receipts).toHaveLength(1)
+
+      useSessionStore.getState().disconnect()
+      expect(useChatsStore.getState().summaries).toEqual([])
+      expect(useMessagesStore.getState().byChat).toEqual({})
+
+      await new Promise((resolve) => setTimeout(resolve, 400))
+      expect(useChatsStore.getState().summaries).toEqual([])
+      expect(useMessagesStore.getState().byChat).toEqual({})
+      expect(mockGateway.receipts).toHaveLength(1)
+
+      failAcks = false
+      useSessionStore.setState({ credentials: CREDENTIALS, status: 'connected' })
+
+      await vi.waitFor(
+        () => {
+          expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(1)
+          expect(useChatsStore.getState().summaries).toHaveLength(1)
+          expect(useChatsStore.getState().summaries[0]).toMatchObject({
+            id: 'chat-1',
+            unread: 1,
+            lastMessage: { id: 'm1', text: 'persisted hello' },
+          })
+          expect(mockGateway.receipts).toHaveLength(0)
+        },
+        { timeout: 5_000 },
+      )
+    } finally {
+      failAcks = false
+      warn.mockRestore()
+      unbind()
+    }
+  })
+
+  it('repairs a failed summary write on redelivery without double-counting unread', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+    const originalApply = useChatsStore.getState().applyNewMessage
+    let failFirstApply = true
+    useChatsStore.setState({
+      applyNewMessage: (input) => {
+        if (failFirstApply) {
+          failFirstApply = false
+          throw new Error('transient summary write failure')
+        }
+        originalApply(input)
+      },
+    })
+
+    try {
+      mockGateway.deliverNotification(incomingEnvelope('m1', 'partial hello', 'Дейл'))
+      await vi.waitFor(() => {
+        expect(failFirstApply).toBe(false)
+      })
+      expect(useChatsStore.getState().summaries).toEqual([])
+      expect(useMessagesStore.getState().byChat['chat-1']).toBeUndefined()
+
+      mockGateway.deliverNotification(incomingEnvelope('m1', 'partial hello', 'Дейл'))
+      await vi.waitFor(
+        () => {
+          expect(mockGateway.receipts).toHaveLength(0)
+        },
+        { timeout: 5_000 },
+      )
+
+      expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(1)
+      expect(useChatsStore.getState().summaries[0]).toMatchObject({
+        unread: 1,
+        lastMessage: { id: 'm1', text: 'partial hello' },
+      })
+    } finally {
+      useChatsStore.setState({ applyNewMessage: originalApply })
+      unbind()
+    }
+  })
+
   it('reloads the open empty chat when the bootstrap settling completes', async () => {
     const unbind = bindChatStores()
     connectSession()
