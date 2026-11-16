@@ -180,6 +180,14 @@ export function createChatsStore(deps: ChatsStoreDeps) {
         if (
           existing !== undefined &&
           existing.lastMessage !== null &&
+          existing.lastMessage.id === message.id &&
+          existing.lastMessage.timestamp === message.timestamp
+        ) {
+          return
+        }
+        if (
+          existing !== undefined &&
+          existing.lastMessage !== null &&
           message.timestamp < existing.lastMessage.timestamp
         ) {
           return

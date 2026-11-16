@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!public/mockServiceWorker.js", "!docs"]
+    "includes": ["**", "!public/mockServiceWorker.js", "!docs", "!src-code-review*.md"]
   },
   "formatter": {
     "enabled": true,

@@ -25,14 +25,14 @@ const showBackgroundMessageToast = (chatId: string, text: string): void => {
 
 const applyEngineEvent = (event: NotificationEngineEvent): void => {
   if (event.kind === 'message') {
-    const applied = useMessagesStore.getState().applyMessageEvent(event)
-    if (!applied) {
-      return
-    }
     useChatsStore.getState().applyNewMessage({
       message: event.message,
       fallbackName: event.chatFallback?.name ?? null,
     })
+    const applied = useMessagesStore.getState().applyMessageEvent(event)
+    if (!applied) {
+      return
+    }
     const { activeChatId } = useChatsStore.getState()
     if (activeChatId !== event.message.chatId && event.message.direction === 'incoming') {
       showBackgroundMessageToast(event.message.chatId, event.message.text)
@@ -40,13 +40,11 @@ const applyEngineEvent = (event: NotificationEngineEvent): void => {
     return
   }
   if (event.kind === 'status') {
-    const applied = useMessagesStore.getState().applyStatusEvent(event)
-    if (applied) {
-      useChatsStore.getState().applyStatusUpdate({
-        idMessage: event.idMessage,
-        status: event.status,
-      })
-    }
+    useChatsStore.getState().applyStatusUpdate({
+      idMessage: event.idMessage,
+      status: event.status,
+    })
+    useMessagesStore.getState().applyStatusEvent(event)
     return
   }
   if (event.kind === 'pollFailed') {
@@ -76,6 +74,16 @@ export function bindChatStores(): () => void {
     }
     if (state.bootstrapPhase === 'done' && previous.bootstrapPhase === 'settling') {
       useMessagesStore.getState().resetEmptyHistoryPhases()
+      const { activeChatId } = useChatsStore.getState()
+      if (
+        activeChatId !== null &&
+        useMessagesStore.getState().history[activeChatId] === undefined
+      ) {
+        const { credentials } = useSessionStore.getState()
+        if (credentials !== null) {
+          void useMessagesStore.getState().loadChatHistory(activeChatId, credentials)
+        }
+      }
     }
   })
   return () => {

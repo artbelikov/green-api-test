@@ -4,7 +4,6 @@ import { useChatsStore } from '@/entities/chats'
 import { useSessionStore } from '@/entities/session'
 import {
   type Chat,
-  credentialsFingerprint,
   type GreenApiCredentials,
   type GreenApiHistoryItem,
   getChatHistory,
@@ -149,23 +148,22 @@ export type ChatListHydration = {
   readonly loading: boolean
 }
 
-const listQueryKeyFor = (credentials: GreenApiCredentials | null): [string, string | null] => [
-  'chat-list',
-  credentials === null ? null : credentialsFingerprint(credentials),
-]
-
 export const useChatListHydration = (): ChatListHydration => {
   const credentials = useSessionStore((state) => state.credentials)
+  const sessionId = useSessionStore((state) => state.sessionId)
   const connected = credentials !== null
   const query = useQuery({
-    queryKey: listQueryKeyFor(credentials),
+    queryKey: ['chat-list', sessionId],
     queryFn: async (): Promise<readonly Chat[]> => {
-      const current = useSessionStore.getState().credentials
-      if (current === null) {
+      const started = useSessionStore.getState()
+      if (started.credentials === null) {
         return []
       }
-      const items = await getChats(current)
-      if (useSessionStore.getState().credentials !== current) {
+      const credentials = started.credentials
+      const startedSessionId = started.sessionId
+      const items = await getChats(credentials, { coalesce: false })
+      const current = useSessionStore.getState()
+      if (current.credentials !== credentials || current.sessionId !== startedSessionId) {
         return []
       }
       return items.map(mapChatListItem).filter((chat): chat is Chat => chat !== null)

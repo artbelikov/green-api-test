@@ -41,6 +41,7 @@ export type SessionState = {
   readonly sessionResolved: boolean
   readonly bootstrapPhase: BootstrapPhase
   readonly settledAt: number | null
+  readonly sessionId: number
   connect(input: ConnectInput): Promise<ConnectResult>
   disconnect(): void
   resume(): Promise<void>
@@ -164,6 +165,7 @@ export function createSessionStore(deps: SessionStoreDeps) {
       sessionResolved: false,
       bootstrapPhase: 'idle',
       settledAt: null,
+      sessionId: 0,
 
       async connect(input) {
         const validationError = validateConnectInput(input)
@@ -177,7 +179,7 @@ export function createSessionStore(deps: SessionStoreDeps) {
         }
         lifetime += 1
         const capturedLifetime = lifetime
-        set({ status: 'connecting' })
+        set({ status: 'connecting', sessionId: lifetime })
         try {
           const failure = await validateState(credentials)
           if (!ownsLifetime(capturedLifetime)) {
@@ -218,6 +220,7 @@ export function createSessionStore(deps: SessionStoreDeps) {
           sessionResolved: true,
           bootstrapPhase: 'idle',
           settledAt: null,
+          sessionId: lifetime,
         })
       },
 
@@ -233,7 +236,7 @@ export function createSessionStore(deps: SessionStoreDeps) {
         }
         lifetime += 1
         const capturedLifetime = lifetime
-        set({ credentials: persisted.credentials, status: 'connecting' })
+        set({ credentials: persisted.credentials, status: 'connecting', sessionId: lifetime })
         try {
           const failure = await validateState(persisted.credentials)
           if (!ownsLifetime(capturedLifetime)) {

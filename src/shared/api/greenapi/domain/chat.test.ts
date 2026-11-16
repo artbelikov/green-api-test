@@ -70,6 +70,24 @@ describe('mapChatListItem', () => {
     })
     expect(mapChatListItem({ name: 'No id here' })).toBeNull()
   })
+
+  it('treats null username and phone fields as absent instead of throwing', () => {
+    const raw = {
+      chatId: '79001234567',
+      name: 'Nullable Fields',
+      type: 'user',
+      username: null,
+      phoneNumber: null,
+      contactName: null,
+    } as unknown as GreenApiChatListItem
+    expect(mapChatListItem(raw)).toEqual({
+      id: '79001234567',
+      name: 'Nullable Fields',
+      type: 'private',
+      username: null,
+      phone: null,
+    })
+  })
 })
 
 describe('mapContactInfo', () => {

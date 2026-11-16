@@ -104,6 +104,7 @@ export async function getChats(
   credentials: GreenApiCredentials,
   options: GreenApiFacadeOptions = {},
 ): Promise<GreenApiChatListItem[]> {
+  const coalesceId = options.coalesce === false ? undefined : coalesceKey(credentials, 'all')
   return dispatchFacade(
     'getChats',
     () =>
@@ -114,7 +115,7 @@ export async function getChats(
         timeoutMs: options.timeoutMs,
       }),
     options,
-    coalesceKey(credentials, 'all'),
+    coalesceId,
   )
 }
 

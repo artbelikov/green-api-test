@@ -109,6 +109,76 @@ describe('bindChatStores', () => {
     unbind()
   })
 
+  it('repairs a delivery whose summary applied but whose message write failed', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+    const originalApply = useMessagesStore.getState().applyMessageEvent
+    let failFirstApply = true
+    useMessagesStore.setState({
+      applyMessageEvent: (event) => {
+        if (failFirstApply) {
+          failFirstApply = false
+          throw new Error('transient write failure')
+        }
+        return originalApply(event)
+      },
+    })
+
+    mockGateway.deliverNotification(incomingEnvelope('m1', 'partial hello', 'Дейл'))
+    await vi.waitFor(() => {
+      expect(useChatsStore.getState().summaries[0]).toMatchObject({
+        id: 'chat-1',
+        unread: 1,
+        lastMessage: { id: 'm1' },
+      })
+    })
+    expect(useMessagesStore.getState().byChat['chat-1']).toBeUndefined()
+
+    mockGateway.deliverNotification(incomingEnvelope('m1', 'partial hello', 'Дейл'))
+    await vi.waitFor(() => {
+      expect(useMessagesStore.getState().byChat['chat-1']).toHaveLength(1)
+    })
+
+    expect(useChatsStore.getState().summaries).toHaveLength(1)
+    expect(useChatsStore.getState().summaries[0]).toMatchObject({
+      unread: 1,
+      lastMessage: { id: 'm1', text: 'partial hello' },
+    })
+    expect(failFirstApply).toBe(false)
+
+    useMessagesStore.setState({ applyMessageEvent: originalApply })
+    unbind()
+  })
+
+  it('reloads the open empty chat when the bootstrap settling completes', async () => {
+    const unbind = bindChatStores()
+    connectSession()
+    let historyCalls = 0
+    server.use(
+      http.post(`${base}/getChatHistory/${CREDENTIALS.apiTokenInstance}`, () => {
+        historyCalls += 1
+        return HttpResponse.json([])
+      }),
+    )
+
+    useChatsStore.getState().openChat('chat-1')
+    await useMessagesStore.getState().loadChatHistory('chat-1', CREDENTIALS)
+    expect(historyCalls).toBe(1)
+    expect(useMessagesStore.getState().history['chat-1']).toBe('ready')
+
+    useSessionStore.setState({ bootstrapPhase: 'settling', settledAt: 1_000 })
+    useSessionStore.setState({ bootstrapPhase: 'done', settledAt: 1_000 })
+
+    await vi.waitFor(
+      () => {
+        expect(historyCalls).toBe(2)
+      },
+      { timeout: 5_000 },
+    )
+    expect(useMessagesStore.getState().history['chat-1']).toBe('ready')
+    unbind()
+  })
+
   it('escalates delivery ticks on the preview when a status event applies', async () => {
     const unbind = bindChatStores()
     connectSession()

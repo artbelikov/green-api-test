@@ -572,6 +572,28 @@ describe('createSessionStore.session lifetime races', () => {
 })
 
 describe('createSessionStore.settle phase', () => {
+  it('advances the session id across the lifecycle so per-session caches can re-key', async () => {
+    const { gateway } = createGateway()
+    const storage = createMemoryStorage()
+    const store = createStore({ gateway, storage })
+
+    expect(store.getState().sessionId).toBe(0)
+
+    await store.connect(VALID_INPUT)
+    expect(store.getState().sessionId).toBe(1)
+
+    store.disconnect()
+    expect(store.getState().sessionId).toBe(2)
+
+    store.disconnect()
+    storage.write(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({ credentials: TRIMMED_CREDENTIALS, settledAt: 1_000 }),
+    )
+    await store.resume()
+    expect(store.getState().sessionId).toBe(4)
+  })
+
   it('completes the settle window on refresh', async () => {
     let currentNow = 1_000
     const { gateway } = createGateway()

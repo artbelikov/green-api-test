@@ -25,21 +25,23 @@ const normalizeChatType = (raw: string | undefined): ChatType => {
   }
 }
 
-const normalizeUsername = (raw: string | undefined): string | null =>
-  raw === undefined ? null : raw.replace(/^@+/, '')
+const normalizeUsername = (raw: string | null | undefined): string | null =>
+  raw === undefined || raw === null ? null : raw.replace(/^@+/, '')
 
-const normalizePhoneNumber = (raw: string | number | undefined): string | null => {
+const normalizePhoneNumber = (raw: string | number | null | undefined): string | null => {
   if (typeof raw === 'number') {
     return raw === 0 ? null : String(raw)
   }
-  if (raw === undefined || raw.length === 0) {
+  if (typeof raw !== 'string' || raw.length === 0) {
     return null
   }
   return raw
 }
 
-const resolveName = (...candidates: ReadonlyArray<string | undefined>): string =>
-  candidates.find((candidate) => candidate !== undefined && candidate.length > 0) ?? ''
+const resolveName = (...candidates: ReadonlyArray<string | null | undefined>): string =>
+  candidates.find(
+    (candidate) => candidate !== undefined && candidate !== null && candidate.length > 0,
+  ) ?? ''
 
 export function mapChatListItem(raw: GreenApiChatListItem): Chat | null {
   const id = raw.chatId ?? raw.id

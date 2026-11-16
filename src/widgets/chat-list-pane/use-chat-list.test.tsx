@@ -23,6 +23,11 @@ const CHATS: readonly Chat[] = [
   { id: '79000000002', name: 'Visible Two', type: 'private', username: null, phone: null },
 ]
 
+const RAW_CHATS = [
+  { id: '79000000001', name: 'Visible One', type: 'user' },
+  { id: '79000000002', name: 'Visible Two', type: 'user' },
+] satisfies unknown[]
+
 const server = setupServer(...handlers)
 
 beforeAll(() => {
@@ -150,67 +155,37 @@ const HydrationHarness = (): null => {
   return null
 }
 
-const mountHydrationHarness = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  })
-  return render(
+const renderHydrationHarness = (queryClient: QueryClient) =>
+  render(
     <QueryClientProvider client={queryClient}>
       <MantineProvider>
         <HydrationHarness />
       </MantineProvider>
     </QueryClientProvider>,
   )
+
+const seedChatListSession = (sessionId: number, credentials: GreenApiCredentials): void => {
+  useSessionStore.setState({ credentials, status: 'connected', sessionId })
+}
+
+const resetToSession = (sessionId: number): void => {
+  useSessionStore.setState({ credentials: null, status: 'disconnected', sessionId })
+  useChatsStore.getState().clear()
 }
 
 describe('useChatListHydration', () => {
   it('fetches a fresh list for the newly connected account', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     let requests = 0
     server.use(
       http.get(/\/getChats\//, () => {
         requests += 1
-        return HttpResponse.json(CHATS)
+        return HttpResponse.json(RAW_CHATS)
       }),
     )
 
-    const firstCredentials = freshCredentials()
-    seedSession(firstCredentials)
-    const firstHandle = mountHydrationHarness()
-    await waitForTest(() => {
-      expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
-    })
-    firstHandle.unmount()
-
-    act(() => {
-      useSessionStore.setState({ credentials: null, status: 'disconnected' })
-      useChatsStore.getState().clear()
-    })
-
-    const otherCredentials: GreenApiCredentials = {
-      ...firstCredentials,
-      apiTokenInstance: 'token-2',
-    }
-    seedSession(otherCredentials)
-    const secondHandle = mountHydrationHarness()
-    await waitForTest(() => {
-      expect(requests).toBe(2)
-      expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
-    })
-    secondHandle.unmount()
-  })
-
-  it('replays the cached list for a same-account reconnect without refetching', async () => {
-    let requests = 0
-    server.use(
-      http.get(/\/getChats\//, () => {
-        requests += 1
-        return HttpResponse.json(CHATS)
-      }),
-    )
-
-    const credentials = freshCredentials()
-    seedSession(credentials)
-    const firstHandle = mountHydrationHarness()
+    seedChatListSession(1, freshCredentials())
+    const firstHandle = renderHydrationHarness(queryClient)
     await waitForTest(() => {
       expect(requests).toBe(1)
       expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
@@ -218,16 +193,89 @@ describe('useChatListHydration', () => {
     firstHandle.unmount()
 
     act(() => {
-      useSessionStore.setState({ credentials: null, status: 'disconnected' })
-      useChatsStore.getState().clear()
+      resetToSession(2)
+    })
+    seedChatListSession(3, { ...BASE_CREDENTIALS, apiTokenInstance: 'token-2' })
+    const secondHandle = renderHydrationHarness(queryClient)
+    await waitForTest(() => {
+      expect(requests).toBe(2)
+      expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
+    })
+    secondHandle.unmount()
+  })
+
+  it('starts a fresh request for a same-account reconnect while the old one is pending', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    let requests = 0
+    const releases: Array<(() => void) | undefined> = []
+    server.use(
+      http.get(/\/getChats\//, async () => {
+        requests += 1
+        await new Promise<void>((resolve) => {
+          releases[requests] = resolve
+        })
+        return HttpResponse.json(requests === 1 ? [] : RAW_CHATS)
+      }),
+    )
+
+    seedChatListSession(1, freshCredentials())
+    const firstHandle = renderHydrationHarness(queryClient)
+    await waitForTest(() => {
+      expect(requests).toBe(1)
+    })
+    firstHandle.unmount()
+
+    act(() => {
+      resetToSession(2)
+    })
+    seedChatListSession(3, freshCredentials())
+    const secondHandle = renderHydrationHarness(queryClient)
+
+    releases[1]?.()
+    await waitForTest(() => {
+      expect(requests).toBe(2)
     })
 
-    seedSession(freshCredentials())
-    const secondHandle = mountHydrationHarness()
+    await waitForTest(() => {
+      expect(useChatsStore.getState().summaries).toHaveLength(0)
+    })
+    expect(useSessionStore.getState().credentials).not.toBeNull()
+
+    releases[2]?.()
     await waitForTest(() => {
       expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
     })
-    expect(requests).toBe(1)
+    expect(requests).toBe(2)
+    secondHandle.unmount()
+  })
+
+  it('refetches for a same-account reconnect even after the first response landed', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    let requests = 0
+    server.use(
+      http.get(/\/getChats\//, () => {
+        requests += 1
+        return HttpResponse.json(RAW_CHATS)
+      }),
+    )
+
+    seedChatListSession(1, freshCredentials())
+    const firstHandle = renderHydrationHarness(queryClient)
+    await waitForTest(() => {
+      expect(requests).toBe(1)
+      expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
+    })
+    firstHandle.unmount()
+
+    act(() => {
+      resetToSession(2)
+    })
+    seedChatListSession(3, freshCredentials())
+    const secondHandle = renderHydrationHarness(queryClient)
+    await waitForTest(() => {
+      expect(requests).toBe(2)
+      expect(useChatsStore.getState().summaries).toHaveLength(CHATS.length)
+    })
     secondHandle.unmount()
   })
 })
